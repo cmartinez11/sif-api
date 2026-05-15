@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Hoja de Picking - {{ $pedido->numero }}</title>
+    <style>
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 12px;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .logo {
+            width: 150px;
+        }
+        .title {
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-decoration: underline;
+        }
+        .info-table {
+            width: 100%;
+            margin-bottom: 20px;
+            border-collapse: collapse;
+        }
+        .info-table td {
+            padding: 5px;
+            vertical-align: top;
+        }
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        .items-table th {
+            background-color: #f2f2f2;
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+            font-size: 11px;
+        }
+        .items-table td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            font-size: 11px;
+        }
+        .footer-table {
+            margin-top: 50px;
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .footer-table td {
+            width: 33.33%;
+            text-align: center;
+            vertical-align: bottom;
+            padding-top: 40px;
+        }
+        .signature-line {
+            border-top: 1px solid #000;
+            width: 80%;
+            margin: 0 auto 5px auto;
+        }
+    </style>
+</head>
+<body>
+    <table class="header">
+        <tr>
+            <td width="30%">
+                @if($logoBase64)
+                    <img src="{{ $logoBase64 }}" class="logo">
+                @else
+                    <h1 style="color: #27E86D; margin: 0;">PLÁSTICOS FÉNIX</h1>
+                @endif
+            </td>
+            <td width="40%" class="title">
+                HOJA DE PICKING<br>
+                <span style="font-size: 14px; font-weight: normal; text-decoration: none;">(Bolsas de polipropileno por kilos)</span>
+            </td>
+            <td width="30%" style="text-align: right;">
+                <p style="margin: 0; font-weight: bold;">PEDIDO N°: {{ $pedido->numero }}</p>
+                <p style="margin: 0;">Fecha: {{ date('d/m/Y') }}</p>
+            </td>
+        </tr>
+    </table>
+
+    <table class="info-table">
+        <tr>
+            <td width="15%"><strong>Cliente:</strong></td>
+            <td>{{ $pedido->cotizacion->cliente->nombre }}</td>
+            <td width="15%"><strong>RUC:</strong></td>
+            <td>{{ $pedido->cotizacion->cliente->ruc }}</td>
+        </tr>
+        <tr>
+            <td><strong>Vendedor:</strong></td>
+            <td>{{ $pedido->cotizacion->vendedor->name ?? 'N/A' }}</td>
+            <td><strong>Fecha de Despacho:</strong></td>
+            <td>{{ $pedido->fecha_entrega_confirmada ? \Carbon\Carbon::parse($pedido->fecha_entrega_confirmada)->format('d/m/Y') : 'Por confirmar' }}</td>
+        </tr>
+    </table>
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th width="15%">CÓDIGO</th>
+                <th>PRODUCTO</th>
+                <th width="12%" style="text-align: center;">CANTIDAD</th>
+                <th width="12%" style="text-align: center;">U/M</th>
+                <th width="15%" style="text-align: center;">TOTAL KILOS</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($pedido->cotizacion->items as $item)
+                @php 
+                    $campos = json_decode($item->campos_json, true);
+                    
+                    $despachosRaw = $pedido->cantidades_despachadas;
+                    $despachos = is_string($despachosRaw) ? json_decode($despachosRaw, true) : ($despachosRaw ?? []);
+                    
+                    $tieneAjuste = array_key_exists($item->id, $despachos);
+
+                    // Para 'Bolsas de Polipropileno por Kilos', la cantidad base está en 'cantidad_fardos'
+                    $fardosOriginales = (float)($campos['cantidad_fardos'] ?? 0);
+                    $cantidadFinal = $tieneAjuste ? (float)$despachos[$item->id] : $fardosOriginales;
+
+                    // El Total a despachar derivado (Kilos). Calculamos promedio por fardo si se ajusta.
+                    $kilosOriginales = (float)($campos['total_kilos'] ?? 0);
+                    $pesoPromedio = $fardosOriginales > 0 ? ($kilosOriginales / $fardosOriginales) : 0;
+                    $totalKilos = $cantidadFinal * $pesoPromedio; 
+
+                    // Imprime la unidad o su fallback a FARDO
+                    $umLogistica = $item->producto->unidad_medida_logistica ?: 'FARDO';
+                @endphp
+                <tr>
+                    <td>{{ $item->producto->codigo }}</td>
+                    <td>
+                        {{ $item->producto->nombre }}
+                        @if($tieneAjuste)
+                            <span style="color: red; font-size: 8px;">(Ajustado)</span>
+                        @endif
+                    </td>
+                    <td style="text-align: center; font-weight: bold; background-color: #f9f9f9;">
+                        {{ number_format((float)$cantidadFinal, 2) }}
+                    </td>
+                    <td style="text-align: center;">{{ $umLogistica }}</td>
+                    <td style="text-align: center; font-weight: bold;">
+                        {{ number_format((float)$totalKilos, 2) }}
+                    </td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+
+    <table class="footer-table">
+        <tr>
+            <td>
+                <div class="signature-line"></div>
+                <p>Preparado por:</p>
+            </td>
+            <td>
+                <div class="signature-line"></div>
+                <p>Chofer:</p>
+            </td>
+            <td>
+                <div class="signature-line"></div>
+                <p>Despachado por:</p>
+            </td>
+        </tr>
+    </table>
+
+    <div style="margin-top: 30px; font-style: italic; color: #666; font-size: 10px;">
+        * Esta hoja de picking muestra las cantidades asignadas a este despacho específico (Pedido N° {{ $pedido->numero }}).
+    </div>
+</body>
+</html>
