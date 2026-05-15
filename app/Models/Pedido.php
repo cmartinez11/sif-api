@@ -71,10 +71,17 @@ class Pedido extends Model
      */
     public function getItemsAttribute()
     {
+        // Seguridad ante registros huérfanos o cotizaciones nulas
+        if (!$this->cotizacion) {
+            return collect();
+        }
+
         // Solo obtener ítems que no hayan sido rechazados en la cotización
         $items = $this->cotizacion->items()->where('estado_item', '!=', 'Rechazado')->get();
         $despachos = $this->cantidades_despachadas ?? [];
-        $nombrePlantilla = $this->cotizacion->plantilla->nombre;
+        
+        $plantilla = $this->cotizacion->plantilla;
+        $nombrePlantilla = $plantilla->nombre ?? 'Universal';
 
         foreach ($items as $item) {
             if (is_array($despachos) && array_key_exists($item->id, $despachos)) {
@@ -142,8 +149,12 @@ class Pedido extends Model
     private function getCalculatedTotals()
     {
         $sumatoriaTotal = 0;
-        foreach ($this->items as $item) {
-            $sumatoriaTotal += $item->precio_total;
+        $items = $this->items;
+
+        if ($items && $items->isNotEmpty()) {
+            foreach ($items as $item) {
+                $sumatoriaTotal += (float) ($item->precio_total ?? 0);
+            }
         }
 
         $subtotal = $sumatoriaTotal / 1.18;
