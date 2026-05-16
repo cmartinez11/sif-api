@@ -1,4 +1,10 @@
 <x-app-layout>
+    <!-- jQuery y Select2 via CDN -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
@@ -214,11 +220,18 @@
     <script>
         function cotizacionForm(initialItems) {
             return {
-                contacto_id: '{{ $cotizacione->cliente->contacto_id ?? '
-                ' }}',
+                init() {
+                    this.$nextTick(() => {
+                        $('.select-producto').select2({ 
+                            placeholder: 'Seleccione...',
+                            minimumResultsForSearch: 0,
+                            width: '100%'
+                        });
+                    });
+                },
+                contacto_id: '{{ $cotizacione->cliente->contacto_id ?? '' }}',
                 cliente_id: '{{ $cotizacione->cliente_id }}',
-                condicion_pago_cotizacion: '{{ $cotizacione->condicion_pago ?? $cotizacione->cliente->condicion_pago ?? '
-                CONTADO ' }}',
+                condicion_pago_cotizacion: '{{ $cotizacione->condicion_pago ?? $cotizacione->cliente->condicion_pago ?? 'CONTADO' }}',
                 agencia: '{{ $cotizacione->agencia }}',
                 direccion_agencia: '{{ $cotizacione->direccion_agencia }}',
                 fecha_entrega_estimada: '{{ $cotizacione->fecha_entrega_estimada ? $cotizacione->fecha_entrega_estimada->format('Y-m-d') : '' }}',
@@ -256,15 +269,26 @@
                     this.items.push({
                         producto_id: '',
                         codigo: '',
-                        cantidad_millar: 0,
-                        fardo: 0,
-                        total_millares: 0,
-                        precio_unitario: 0,
-                        precio_total: 0,
+                        cantidad: '',
+                        cantidad_millar: '',
+                        fardo: '',
+                        total_kilos: '',
+                        total_millares: '',
+                        precio_unitario: '',
+                        precio_total: '',
                         unidad_medida: '',
                         estado_item: 'Activo',
                         motivo_rechazo: '',
                         precio_competencia: ''
+                    });
+
+                    // Re-inicializar Select2 en la nueva fila
+                    this.$nextTick(() => {
+                        $('.select-producto').select2({ 
+                            placeholder: 'Seleccione...',
+                            minimumResultsForSearch: 0,
+                            width: '100%'
+                        });
                     });
                 },
 
@@ -470,6 +494,48 @@
                 shadow: none !important;
                 border: none !important;
             }
+        }
+
+        /* Estilos personalizados para Select2 - Branding Fénix */
+        .select2-container--default .select2-selection--single {
+            border-radius: 0.5rem;
+            height: 42px;
+            border-color: #d1d5db;
+            display: flex;
+            align-items: center;
+        }
+
+        .select2-container--default .select2-selection--single:focus {
+            border-color: #0CC954;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 40px;
+        }
+
+        .select2-container {
+            width: 100% !important;
+        }
+
+        .select2-dropdown {
+            border-radius: 0.5rem;
+            border-color: #e5e7eb;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            z-index: 9999;
+        }
+
+        .select2-container--default .select2-results__option--highlighted[aria-selected] {
+            background-color: #0CC954;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            color: #374151;
+            font-size: 0.875rem;
+            padding-left: 0.75rem;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__placeholder {
+            color: #6b7280;
         }
     </style>
 

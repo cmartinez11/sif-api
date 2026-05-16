@@ -32,14 +32,15 @@
                                     // --- NUEVO CÓDIGO: Fuerza el Focus al abrir ---
                                     .on('select2:open', () => {
                                         setTimeout(() => {
-                                            document.querySelector('.select2-search__field').focus();
-                                        }, 50);
+                                            const searchField = document.querySelector('.select2-container--open .select2-search__field');
+                                            if (searchField) searchField.focus();
+                                        }, 100);
                                     });
                                     // ----------------------------------------------
                                 });
                             "
                             @change="updateProductData(index, $event)" 
-                            class="w-full text-xs border-gray-300 rounded">
+                            class="w-full text-xs border-gray-300 rounded select-producto">
                         <option value="">Seleccione...</option>
                         @foreach($productos as $prod)
                             <option value="{{ $prod->id }}" 
