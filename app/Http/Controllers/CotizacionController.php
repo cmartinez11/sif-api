@@ -264,6 +264,46 @@ class CotizacionController extends Controller
         }
     }
 
+    public function descargarJpg(Cotizacion $cotizacion)
+    {
+        $this->authorizeVendedor($cotizacion);
+        
+        // Cargamos las relaciones explícitamente y filtramos ítems activos
+        $cotizacion->load([
+            'cliente', 
+            'plantilla', 
+            'items' => function ($query) {
+                $query->where('estado_item', 'Activo')->with('producto');
+            }, 
+            'vendedor'
+        ]);
+        
+        // VALIDACIÓN CRÍTICA: Si la plantilla es null
+        if (!$cotizacion->plantilla) {
+            return "Error: La cotización #{$cotizacion->numero} no tiene una plantilla asignada.";
+        }
+
+        $nombreVista = Str::slug($cotizacion->plantilla->nombre);
+        
+        // --- NUEVA LÓGICA DE LOGO EN BASE64 ---
+        $logoBase64 = null;
+        $path = public_path('logo2.png');
+        
+        if (file_exists($path)) {
+            // Leemos el archivo y lo convertimos a texto Base64
+            $type = pathinfo($path, PATHINFO_EXTENSION);
+            $data = file_get_contents($path);
+            $logoBase64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
+        }
+        // ---------------------------------------
+
+        return view('pdf.cotizacion-' . $nombreVista, [
+            'cotizacion' => $cotizacion,
+            'logoBase64' => $logoBase64,
+            'isJpg' => true
+        ]);
+    }
+
     public function downloadTemplateTratadas()
     {
         return Excel::download(new TemplateExport(['codigo_producto', 'cantidad_por_millar', 'fardo', 'precio_unitario']), 'plantilla-tratadas.xlsx');

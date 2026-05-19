@@ -117,7 +117,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($pedido->cotizacion->items as $item)
+            @foreach($pedido->items as $item)
                 @php 
                     $campos = json_decode($item->campos_json, true);
                     
@@ -125,6 +125,11 @@
                     $despachos = is_string($despachosRaw) ? json_decode($despachosRaw, true) : ($despachosRaw ?? []);
                     
                     $tieneAjuste = array_key_exists($item->id, $despachos);
+
+                    $isBackorder = str_contains($pedido->numero, '-');
+                    if ($isBackorder && !$tieneAjuste) {
+                        continue;
+                    }
 
                     $fardosOriginales = (float)($campos['fardo'] ?? 0);
                     $cantidadFinal = $tieneAjuste ? (float)$despachos[$item->id] : $fardosOriginales;

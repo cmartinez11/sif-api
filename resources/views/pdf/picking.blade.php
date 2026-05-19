@@ -116,7 +116,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($pedido->cotizacion->items as $index => $item)
+            @foreach($pedido->items as $index => $item)
                 @php 
                     $campos = json_decode($item->campos_json, true);
                     $plantilla = $pedido->cotizacion->plantilla->nombre;
@@ -126,6 +126,11 @@
                     $despachos = is_string($despachosRaw) ? json_decode($despachosRaw, true) : ($despachosRaw ?? []);
                     
                     $tieneAjuste = array_key_exists($item->id, $despachos);
+
+                    $isBackorder = str_contains($pedido->numero, '-');
+                    if ($isBackorder && !$tieneAjuste) {
+                        continue;
+                    }
 
                     // Cantidad original (para calcular promedios si es necesario)
                     $fardosOriginales = ($plantilla === 'Bolsas de Polipropileno por kilos') 

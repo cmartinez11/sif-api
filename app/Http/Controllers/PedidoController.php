@@ -13,13 +13,11 @@ class PedidoController extends Controller
     public function index(Request $request)
     {
         // Obtener la consulta base con sus relaciones
-        $query = Pedido::with(['cotizacion.cliente', 'cotizacion.plantilla', 'cotizacion.vendedor']);
+        $query = Pedido::with(['cotizacion.cliente', 'cotizacion.plantilla', 'vendedor']);
 
         // Seguridad: Si es vendedor, solo ve los suyos
         if (auth()->user()->hasRole('Vendedor')) {
-            $query->whereHas('cotizacion', function($q) {
-                $q->where('vendedor_id', auth()->id());
-            });
+            $query->where('user_id', auth()->id());
         }
 
         // 1. Filtro: Rango de Fecha de Pedido (created_at)
@@ -42,9 +40,7 @@ class PedidoController extends Controller
 
         // 4. Filtro: Vendedor
         if ($request->filled('vendedor_id')) {
-            $query->whereHas('cotizacion', function($q) use ($request) {
-                $q->where('vendedor_id', $request->vendedor_id);
-            });
+            $query->where('user_id', $request->vendedor_id);
         }
 
         // Ordenar por defecto y obtener resultados
@@ -88,10 +84,24 @@ class PedidoController extends Controller
         $pedido->numero = 'P' . str_pad($siguienteNumero, 8, '0', STR_PAD_LEFT);
         
         $pedido->cotizacion_id = $cotizacion->id;
+        $pedido->user_id = $cotizacion->vendedor_id;
         $pedido->estado = 'Pendiente';
         $pedido->fecha_pedido = date('Y-m-d');
         $pedido->fecha_confirmacion = now();
         $pedido->save();
+
+        // Copiar los ítems activos de la cotización al detalle del pedido
+        $items = $cotizacion->items()->where('estado_item', '!=', 'Rechazado')->get();
+        foreach ($items as $item) {
+            $pedidoItem = new \App\Models\PedidoItem();
+            $pedidoItem->pedido_id = $pedido->id;
+            $pedidoItem->producto_id = $item->producto_id;
+            $pedidoItem->unidad_medida = $item->producto->unidad_medida ?? 'Und';
+            $pedidoItem->precio_unitario = $item->precio_unitario;
+            $pedidoItem->precio_total = $item->precio_total;
+            $pedidoItem->campos_json = $item->campos_json;
+            $pedidoItem->save();
+        }
 
         $cotizacion->estado = 'Convertida a Pedido';
         $cotizacion->save();
@@ -101,7 +111,7 @@ class PedidoController extends Controller
 
     public function show(Pedido $pedido)
     {
-        $pedido->load(['cotizacion.cliente', 'cotizacion.items.producto', 'cotizacion.plantilla', 'cotizacion.vendedor']);
+        $pedido->load(['cotizacion.cliente', 'items.producto', 'cotizacion.plantilla', 'vendedor']);
         return view('pedidos.show', compact('pedido'));
     }
 
@@ -239,7 +249,26 @@ class PedidoController extends Controller
                 $nuevoPedido = $pedido->replicate();
                 $nuevoPedido->numero = $nuevoNumeroCorrelativo;
                 $nuevoPedido->estado = 'Pendiente';
-                $nuevoPedido->cantidades_despachadas = json_encode($saldosPendientes);
+                $nuevoPedido->save();
+
+                // Replicar los detalles del pedido para el Backorder y mapear IDs
+                $idMap = [];
+                foreach ($pedido->items as $item) {
+                    $nuevoItem = $item->replicate();
+                    $nuevoItem->pedido_id = $nuevoPedido->id;
+                    $nuevoItem->save();
+                    $idMap[$item->id] = $nuevoItem->id;
+                }
+
+                // Ajustar cantidades_despachadas utilizando los nuevos IDs del Backorder
+                $nuevoSaldos = [];
+                foreach ($saldosPendientes as $oldId => $saldo) {
+                    if (isset($idMap[$oldId])) {
+                        $nuevoSaldos[$idMap[$oldId]] = $saldo;
+                    }
+                }
+
+                $nuevoPedido->cantidades_despachadas = json_encode($nuevoSaldos);
                 $nuevoPedido->save();
             }
 
@@ -277,7 +306,7 @@ class PedidoController extends Controller
         }
 
         // Eager loading
-        $pedido->load(['cotizacion.cliente', 'cotizacion.items.producto', 'cotizacion.plantilla']);
+        $pedido->load(['cotizacion.cliente', 'items.producto', 'cotizacion.plantilla']);
 
         // Lógica de Logo Base64
         $logoBase64 = null;
@@ -328,19 +357,25 @@ class PedidoController extends Controller
             $pedido->estado = 'Cancelado por el cliente';
             $pedido->save();
 
-            // Registrar en CRM Competencia para todos los ítems de este backorder
+            $despachos = is_string($pedido->cantidades_despachadas) 
+                ? json_decode($pedido->cantidades_despachadas, true) 
+                : ($pedido->cantidades_despachadas ?? []);
+
+            // Registrar en CRM Competencia únicamente para los ítems de este backorder que quedaron pendientes
             foreach ($pedido->items as $item) {
-                \App\Models\Competencia::create([
-                    'cliente_id'        => $pedido->cotizacion->cliente_id,
-                    'producto_id'       => $item->producto_id,
-                    'proveedor_nombre'  => $request->proveedor_nombre ?? 'Desconocido',
-                    'precio_ofrecido'   => $request->precio_ofrecido ?? 0,
-                    'motivo_perdida'    => $request->motivo_perdida,
-                    'entrega_proveedor' => $request->entrega_proveedor,
-                    'entrega_nuestra'   => $request->entrega_nuestra,
-                    'detalle_perdida'   => $request->detalle_perdida,
-                    'fecha_dato'        => now(),
-                ]);
+                if (is_array($despachos) && array_key_exists($item->id, $despachos)) {
+                    \App\Models\Competencia::create([
+                        'cliente_id'        => $pedido->cotizacion->cliente_id,
+                        'producto_id'       => $item->producto_id,
+                        'proveedor_nombre'  => $request->proveedor_nombre ?? 'Desconocido',
+                        'precio_ofrecido'   => $request->precio_ofrecido ?? 0,
+                        'motivo_perdida'    => $request->motivo_perdida,
+                        'entrega_proveedor' => $request->entrega_proveedor,
+                        'entrega_nuestra'   => $request->entrega_nuestra,
+                        'detalle_perdida'   => $request->detalle_perdida,
+                        'fecha_dato'        => now(),
+                    ]);
+                }
             }
 
             DB::commit();

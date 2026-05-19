@@ -115,7 +115,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($pedido->cotizacion->items as $item)
+            @foreach($pedido->items as $item)
                 @php 
                     $campos = json_decode($item->campos_json, true);
                     
@@ -123,6 +123,11 @@
                     $despachos = is_string($despachosRaw) ? json_decode($despachosRaw, true) : ($despachosRaw ?? []);
                     
                     $tieneAjuste = array_key_exists($item->id, $despachos);
+
+                    $isBackorder = str_contains($pedido->numero, '-');
+                    if ($isBackorder && !$tieneAjuste) {
+                        continue;
+                    }
 
                     // En la plantilla Universal, la cantidad suele estar directamente en 'cantidad'
                     $cantidadOriginal = (float)($campos['cantidad'] ?? 0);

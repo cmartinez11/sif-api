@@ -59,7 +59,9 @@
                                             <a href="{{ route('cotizaciones.show', $c) }}" class="bg-blue-500 text-white px-2 py-1 rounded text-[10px] md:text-xs hover:bg-blue-600">Ver</a>
                                             
                                             @role('Vendedor')
+
                                                 <a href="{{ route('cotizaciones.duplicar', $c->id) }}" class="bg-cyan-500 hover:bg-cyan-600 text-white px-2 py-1 rounded text-[10px] md:text-xs shadow-sm transition">
+                                                <a href="{{ route('cotizaciones.duplicar', $c->id) }}" class="bg-black text-white px-2 py-1 rounded text-[10px] md:text-xs hover:bg-gray-900 transition">
                                                     Duplicar
                                                 </a>
                                             @endrole
@@ -67,7 +69,39 @@
                                             @if($c->estado === 'Borrador')
                                                 <a href="{{ route('cotizaciones.edit', $c) }}" class="bg-yellow-500 text-black px-2 py-1 rounded text-[10px] md:text-xs hover:bg-yellow-600">Editar</a>
                                             @endif
-                                            <a href="{{ route('cotizaciones.pdf', $c) }}" target="_blank" class="bg-gray-800 text-white px-2 py-1 rounded text-[10px] md:text-xs hover:bg-black">PDF</a>
+                                            <!-- Dropdown Descargar -->
+                                            <div x-data="{ open: false }" @click.away="open = false" class="relative inline-block text-left">
+                                                <button type="button" @click="open = !open" class="bg-gray-800 text-white px-2 py-1 rounded text-[10px] md:text-xs hover:bg-black inline-flex items-center gap-1 transition focus:outline-none">
+                                                    <span>Descargar</span>
+                                                    <svg class="h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                                    </svg>
+                                                </button>
+                                                <div x-show="open" 
+                                                     x-transition:enter="transition ease-out duration-100" 
+                                                     x-transition:enter-start="transform opacity-0 scale-95" 
+                                                     x-transition:enter-end="transform opacity-100 scale-100" 
+                                                     x-transition:leave="transition ease-in duration-75" 
+                                                     x-transition:leave-start="transform opacity-100 scale-100" 
+                                                     x-transition:leave-end="transform opacity-0 scale-95" 
+                                                     class="origin-top-right absolute right-0 mt-1 w-36 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50 divide-y divide-gray-100 focus:outline-none" 
+                                                     style="display: none;">
+                                                    <div class="py-1">
+                                                        <a href="{{ route('cotizaciones.pdf', $c) }}" target="_blank" @click="open = false" class="text-gray-700 hover:bg-gray-100 hover:text-gray-900 group flex items-center px-3 py-1.5 text-[10px] md:text-xs font-medium">
+                                                            <svg class="mr-2 h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                            </svg>
+                                                            Descargar PDF
+                                                        </a>
+                                                        <a href="{{ route('cotizaciones.jpg', $c) }}" target="_blank" @click="open = false" class="text-gray-700 hover:bg-gray-100 hover:text-gray-900 group flex items-center px-3 py-1.5 text-[10px] md:text-xs font-medium">
+                                                            <svg class="mr-2 h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                            </svg>
+                                                            Descargar JPG
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
                                             
                                             @if($c->estado == 'Borrador')
                                                 <button type="button" @click="selectedCotizacionId = {{ $c->id }}; modalVentaPerdidaOpen = true" class="bg-red-500 text-white px-2 py-1 rounded text-[10px] md:text-xs hover:bg-red-600 shadow transition">

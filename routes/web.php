@@ -41,6 +41,7 @@ Route::middleware('auth')->group(function () {
     Route::get('cotizaciones/download-template-polipropileno-kilos', [App\Http\Controllers\CotizacionController::class, 'downloadTemplatePolipropilenoKilos'])->name('cotizaciones.download_template_polipropileno_kilos');
 
     Route::get('cotizaciones/{cotizacion}/pdf', [App\Http\Controllers\CotizacionController::class, 'generatePdf'])->name('cotizaciones.pdf');
+    Route::get('cotizaciones/{cotizacion}/jpg', [App\Http\Controllers\CotizacionController::class, 'descargarJpg'])->name('cotizaciones.jpg');
     
     Route::resource('pedidos', App\Http\Controllers\PedidoController::class);
     Route::post('pedidos/{pedido}/estado', [App\Http\Controllers\PedidoController::class, 'updateEstado'])->name('pedidos.update_estado');

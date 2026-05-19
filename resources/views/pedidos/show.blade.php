@@ -70,7 +70,7 @@
                         </div>
                         <div>
                             <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Origen (Vendedor)</h3>
-                            <p class="text-lg font-bold text-gray-900">{{ $pedido->cotizacion->vendedor->name ?? 'N/A' }}</p>
+                            <p class="text-lg font-bold text-gray-900">{{ $pedido->vendedor->name ?? ($pedido->cotizacion->vendedor->name ?? 'N/A') }}</p>
                             <p class="text-sm text-gray-600">Cotización: #{{ $pedido->cotizacion->numero }}</p>
                             <p class="text-sm text-gray-600">Plantilla: {{ $pedido->cotizacion->plantilla->nombre }}</p>
                         </div>
@@ -194,7 +194,7 @@
 
                                             $cantidadFinal = $tieneAjuste ? (float) $despachos[$item->id] : $cantidadOriginal;
                                             $huboCambio = $tieneAjuste && ($cantidadFinal != $cantidadOriginal);
-                                            $unidadVisual = $item->unidad_medida ?? 'Fardos';
+                                            $unidadVisual = $item->producto->unidad_medida ?? $item->unidad_medida ?? '';
 
                                             // 4. RECÁLCULO MATEMÁTICO
                                             $precioTotalFila = $item->precio_total; 

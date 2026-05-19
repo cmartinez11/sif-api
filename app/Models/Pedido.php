@@ -59,76 +59,19 @@ class Pedido extends Model
     }
 
     /**
-     * Acceso a través de relación: Pedido -> Cotizacion -> Vendedor
+     * Relación con el vendedor (Usuario que generó el pedido)
      */
     public function vendedor()
     {
-        return $this->cotizacion->vendedor ?? null;
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     /**
-     * Acceso a items calculados con los ajustes de logística
+     * Relación con los detalles del pedido
      */
-    public function getItemsAttribute()
+    public function items()
     {
-        // Seguridad ante registros huérfanos o cotizaciones nulas
-        if (!$this->cotizacion) {
-            return collect();
-        }
-
-        // Solo obtener ítems que no hayan sido rechazados en la cotización
-        $items = $this->cotizacion->items()->where('estado_item', '!=', 'Rechazado')->get();
-        $despachos = $this->cantidades_despachadas ?? [];
-        
-        $plantilla = $this->cotizacion->plantilla;
-        $nombrePlantilla = $plantilla->nombre ?? 'Universal';
-
-        foreach ($items as $item) {
-            if (is_array($despachos) && array_key_exists($item->id, $despachos)) {
-                $nuevaCantidad = (float) $despachos[$item->id];
-                $campos = json_decode($item->campos_json, true);
-
-                // Actualizar cantidad base en el JSON según la plantilla
-                if (in_array($nombrePlantilla, ['Tratadas', 'Bolsas de Polipropileno', 'Pets'])) {
-                    $campos['fardo'] = $nuevaCantidad;
-                } elseif ($nombrePlantilla === 'Bolsas de Polipropileno por kilos') {
-                    $campos['cantidad_fardos'] = $nuevaCantidad;
-                } else {
-                    $campos['cantidad'] = $nuevaCantidad;
-                }
-
-                // Recalcular totales del ítem
-                if (in_array($nombrePlantilla, ['Tratadas', 'Pets'])) {
-                    $cantMillar = (float) ($campos['cantidad_millar'] ?? 0);
-                    $campos['total_millares'] = $nuevaCantidad * $cantMillar;
-                    $item->precio_total = $campos['total_millares'] * (float)$item->precio_unitario;
-                } elseif ($nombrePlantilla === 'Bolsas de Polipropileno por kilos') {
-                    // Calculamos peso promedio basado en el original
-                    $originalFardos = (float) (json_decode($item->getOriginal('campos_json'), true)['cantidad_fardos'] ?? 1);
-                    if ($originalFardos <= 0) $originalFardos = 1;
-                    $originalKilos = (float) (json_decode($item->getOriginal('campos_json'), true)['total_kilos'] ?? 0);
-                    $pesoPromedio = $originalKilos / $originalFardos;
-                    
-                    $campos['total_kilos'] = $nuevaCantidad * $pesoPromedio;
-                    $item->precio_total = $campos['total_kilos'] * (float)$item->precio_unitario;
-                } elseif ($nombrePlantilla === 'Bolsas de Polipropileno') {
-                    // Similar a por kilos pero el campo es total_kilos directamente
-                    $originalFardos = (float) (json_decode($item->getOriginal('campos_json'), true)['fardo'] ?? 1);
-                    if ($originalFardos <= 0) $originalFardos = 1;
-                    $originalKilos = (float) (json_decode($item->getOriginal('campos_json'), true)['total_kilos'] ?? 0);
-                    $pesoPromedio = $originalKilos / $originalFardos;
-                    
-                    $campos['total_kilos'] = $nuevaCantidad * $pesoPromedio;
-                    $item->precio_total = $campos['total_kilos'] * (float)$item->precio_unitario;
-                } elseif ($nombrePlantilla === 'Universal') {
-                    $item->precio_total = $nuevaCantidad * (float)$item->precio_unitario;
-                }
-
-                $item->campos_json = json_encode($campos);
-            }
-        }
-
-        return $items;
+        return $this->hasMany(PedidoItem::class, 'pedido_id');
     }
 
     public function getSubtotalAttribute()
@@ -150,10 +93,47 @@ class Pedido extends Model
     {
         $sumatoriaTotal = 0;
         $items = $this->items;
+        $despachos = $this->cantidades_despachadas ?? [];
+        if (is_string($despachos)) {
+            $despachos = json_decode($despachos, true);
+        }
+        
+        $plantilla = $this->cotizacion->plantilla ?? null;
+        $nombrePlantilla = $plantilla->nombre ?? 'Universal';
 
         if ($items && $items->isNotEmpty()) {
             foreach ($items as $item) {
-                $sumatoriaTotal += (float) ($item->precio_total ?? 0);
+                $precioTotalFila = (float)$item->precio_total;
+
+                if (is_array($despachos) && array_key_exists($item->id, $despachos)) {
+                    $nuevaCantidad = (float) $despachos[$item->id];
+                    $campos = is_string($item->campos_json) ? json_decode($item->campos_json, true) : $item->campos_json;
+
+                    if (in_array($nombrePlantilla, ['Tratadas', 'Pets'])) {
+                        $cantMillar = (float) ($campos['cantidad_millar'] ?? 0);
+                        $totalDerivado = $nuevaCantidad * $cantMillar;
+                        $precioTotalFila = $totalDerivado * (float)$item->precio_unitario;
+                    } elseif ($nombrePlantilla === 'Bolsas de Polipropileno por kilos') {
+                        $originalFardos = (float) ($campos['cantidad_fardos'] ?? 1);
+                        if ($originalFardos <= 0) $originalFardos = 1;
+                        $originalKilos = (float) ($campos['total_kilos'] ?? 0);
+                        $pesoPromedio = $originalKilos / $originalFardos;
+                        
+                        $totalDerivado = $nuevaCantidad * $pesoPromedio;
+                        $precioTotalFila = $totalDerivado * (float)$item->precio_unitario;
+                    } elseif ($nombrePlantilla === 'Bolsas de Polipropileno') {
+                        $originalFardos = (float) ($campos['fardo'] ?? 1);
+                        if ($originalFardos <= 0) $originalFardos = 1;
+                        $originalKilos = (float) ($campos['total_kilos'] ?? 0);
+                        $pesoPromedio = $originalKilos / $originalFardos;
+                        
+                        $totalDerivado = $nuevaCantidad * $pesoPromedio;
+                        $precioTotalFila = $totalDerivado * (float)$item->precio_unitario;
+                    } elseif ($nombrePlantilla === 'Universal') {
+                        $precioTotalFila = $nuevaCantidad * (float)$item->precio_unitario;
+                    }
+                }
+                $sumatoriaTotal += $precioTotalFila;
             }
         }
 

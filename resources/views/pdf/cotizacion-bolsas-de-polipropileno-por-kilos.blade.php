@@ -60,10 +60,18 @@
                     <p style="margin: 0; font-size: 8px; color: #888;">Pasaje Loreto Mypes De Villa Sol MZ. A Lote. 10 - Jicamarca</p>
                 </td>
                 <td style="border: none; width: 40%; text-align: right; vertical-align: middle;">
-                    <div style="background-color: #fff; border: 2px solid #0CC954; padding: 10px; border-radius: 10px; display: inline-block; min-width: 150px;">
-                        <h3 style="margin: 0; color: #0CC954; font-size: 14px;">COTIZACIÓN</h3>
-                        <h2 style="margin: 5px 0 0 0; color: #d4af37; font-size: 18px;">N° {{ $cotizacion->numero }}</h2>
-                    </div>
+                    <table style="border: 2px solid #0CC954; background-color: #ffffff; padding: 10px; width: 170px; margin-left: auto; margin-right: 0; border-collapse: collapse; text-align: center;">
+                        <tr>
+                            <td style="border: none; text-align: center; padding: 0;">
+                                <span style="margin: 0; color: #0CC954; font-size: 14px; font-weight: bold; text-transform: uppercase;">COTIZACIÓN</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="border: none; text-align: center; padding: 0;">
+                                <span style="color: #00b050; font-size: 18px; font-weight: bold; margin-top: 5px; display: block;">Nro. {{ $cotizacion->numero }}</span>
+                            </td>
+                        </tr>
+                    </table>
                 </td>
             </tr>
         </table>
@@ -85,7 +93,8 @@
                         @if($cotizacion->moneda == 'dolares')
                             <span class="text-green font-bold">T.C.:</span> {{ number_format($cotizacion->tipo_cambio, 3) }}<br>
                         @endif
-                        <span class="text-green font-bold">ATENDIDO POR:</span> {{ $cotizacion->vendedor?->name ?? 'DPTO. VENTAS' }}
+                        <span class="text-green font-bold">ATENDIDO POR:</span> {{ $cotizacion->vendedor?->name ?? 'DPTO. VENTAS' }}<br>
+                        <span class="text-green font-bold">CELULAR:</span> {{ $cotizacion->vendedor?->celular ?? 'No registrado' }}
                     </td>
                 </tr>
             </table>
@@ -196,16 +205,10 @@
                                     <td style="border: none; padding: 3px 0; width: 50%;">
                                         <strong style="color: #1877F2;">FB:</strong> @plasticosfenix
                                     </td>
-                                    <td style="border: none; padding: 3px 0; width: 50%;">
-                                        <strong style="color: #25D366;">WA:</strong> +51 912 421 813
-                                    </td>
                                 </tr>
                                 <tr>
                                     <td style="border: none; padding: 3px 0;">
                                         <strong style="color: #000000;">TK:</strong> @plasticosfenix
-                                    </td>
-                                    <td style="border: none; padding: 3px 0;">
-                                        <strong style="color: #25D366;">WA:</strong> +51 947 271 051
                                     </td>
                                 </tr>
                                 <tr>
@@ -225,5 +228,59 @@
             </table>
         </div>
     </div>
+
+    @if(isset($isJpg) && $isJpg)
+        <!-- Loading overlay -->
+        <div id="loading-overlay" style="position: fixed; inset: 0; background: rgba(255,255,255,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; font-family: 'Helvetica', Arial, sans-serif;">
+            <div style="border: 4px solid #f3f3f3; border-top: 4px solid #0CC954; border-radius: 50%; width: 45px; height: 45px; animation: spin 1s linear infinite; margin-bottom: 15px;"></div>
+            <div style="font-size: 16px; font-weight: bold; color: #333;">Generando imagen de cotización...</div>
+            <style>
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            </style>
+        </div>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+        <script>
+            window.addEventListener('load', function() {
+                // Dar tiempo adicional para que el logo y fuentes se pinten
+                setTimeout(function() {
+                    const target = document.querySelector('.page-container');
+                    if (!target) {
+                        alert('Error: No se encontró el contenedor de la cotización.');
+                        return;
+                    }
+                    
+                    // Asegurar fondo blanco y remover sombras para el JPG
+                    target.style.boxShadow = 'none';
+                    target.style.border = 'none';
+                    
+                    html2canvas(target, {
+                        scale: 2,
+                        useCORS: true,
+                        allowTaint: true,
+                        backgroundColor: '#ffffff'
+                    }).then(canvas => {
+                        const link = document.createElement('a');
+                        link.download = 'Cotizacion_{{ $cotizacion->numero }}.jpg';
+                        link.href = canvas.toDataURL('image/jpeg', 0.95);
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        
+                        setTimeout(function() {
+                            window.close();
+                        }, 800);
+                    }).catch(err => {
+                        console.error('Error al generar la imagen:', err);
+                        document.getElementById('loading-overlay').innerHTML = 
+                            '<div style="color: red; font-weight: bold;">Error al generar la imagen.</div>';
+                    });
+                }, 800);
+            });
+        </script>
+    @endif
 </body>
 </html>

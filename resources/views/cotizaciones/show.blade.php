@@ -5,9 +5,39 @@
                 {{ __('Detalle de Cotización') }} - <span class="text-fenix-gold">{{ $cotizacion->numero }}</span>
             </h2>
             <div class="flex gap-2">
-                <a href="{{ route('cotizaciones.pdf', $cotizacion) }}" target="_blank" class="bg-gray-800 text-white px-4 py-2 rounded shadow hover:bg-black transition no-print">
-                    Ver PDF
-                </a>
+                <!-- Dropdown Descargar -->
+                <div x-data="{ open: false }" @click.away="open = false" class="relative inline-block text-left no-print">
+                    <button type="button" @click="open = !open" class="bg-gray-800 text-white px-4 py-2 rounded shadow hover:bg-black inline-flex items-center gap-1.5 transition focus:outline-none">
+                        <span>Descargar</span>
+                        <svg class="h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    <div x-show="open" 
+                         x-transition:enter="transition ease-out duration-100" 
+                         x-transition:enter-start="transform opacity-0 scale-95" 
+                         x-transition:enter-end="transform opacity-100 scale-100" 
+                         x-transition:leave="transition ease-in duration-75" 
+                         x-transition:leave-start="transform opacity-100 scale-100" 
+                         x-transition:leave-end="transform opacity-0 scale-95" 
+                         class="origin-top-right absolute right-0 mt-1 w-44 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50 divide-y divide-gray-100 focus:outline-none" 
+                         style="display: none;">
+                        <div class="py-1">
+                            <a href="{{ route('cotizaciones.pdf', $cotizacion) }}" target="_blank" @click="open = false" class="text-gray-700 hover:bg-gray-100 hover:text-gray-900 group flex items-center px-4 py-2 text-sm font-medium">
+                                <svg class="mr-3 h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                                Descargar PDF
+                            </a>
+                            <a href="{{ route('cotizaciones.jpg', $cotizacion) }}" target="_blank" @click="open = false" class="text-gray-700 hover:bg-gray-100 hover:text-gray-900 group flex items-center px-4 py-2 text-sm font-medium">
+                                <svg class="mr-3 h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                Descargar JPG
+                            </a>
+                        </div>
+                    </div>
+                </div>
                 <a href="{{ route('cotizaciones.index') }}" class="bg-gray-500 text-white px-4 py-2 rounded shadow hover:bg-gray-600 transition no-print">
                     Volver
                 </a>
