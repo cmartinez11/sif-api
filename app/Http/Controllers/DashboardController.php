@@ -46,6 +46,38 @@ class DashboardController extends Controller
             ));
         }
 
+        $estadosValidos = ['Aprobado', 'Despachado', 'Entregado'];
+        $mesActual = Carbon::now();
+
+        // Calcular ventas por moneda del mes actual respetando roles
+        $pedidosMesQuery = Pedido::whereIn('estado', $estadosValidos)
+            ->whereYear('fecha_pedido', $mesActual->year)
+            ->whereMonth('fecha_pedido', $mesActual->month);
+
+        if ($user->hasRole('Vendedor')) {
+            $pedidosMesQuery->whereHas('cotizacion', function ($query) {
+                $query->where('vendedor_id', auth()->id());
+            });
+        }
+
+        $pedidosDelMes = $pedidosMesQuery->with('cotizacion')->get()->unique('cotizacion_id');
+
+        $ventasSoles = $pedidosDelMes->sum(function ($pedido) {
+            $c = $pedido->cotizacion;
+            if ($c && $c->moneda === 'soles') {
+                return $c->total ?? 0;
+            }
+            return 0;
+        });
+
+        $ventasDolares = $pedidosDelMes->sum(function ($pedido) {
+            $c = $pedido->cotizacion;
+            if ($c && $c->moneda === 'dolares') {
+                return $c->total ?? 0;
+            }
+            return 0;
+        });
+
         $data = [];
 
         if ($user->hasAnyRole(['Supervisor', 'Administrador'])) {
@@ -88,22 +120,6 @@ class DashboardController extends Controller
             
             $estadosValidos = ['Aprobado', 'Despachado', 'Entregado'];
             $mesActual = Carbon::now();
-            $data['ventas_mes'] = Pedido::whereHas('cotizacion', function ($query) use ($vendedorId) {
-                $query->where('vendedor_id', $vendedorId);
-            })
-                ->whereIn('estado', $estadosValidos)
-                ->whereYear('fecha_pedido', $mesActual->year)
-                ->whereMonth('fecha_pedido', $mesActual->month)
-                ->with('cotizacion')
-                ->get()
-                ->unique('cotizacion_id')
-                ->sum(function ($pedido) {
-                    $c = $pedido->cotizacion;
-                    if ($c && $c->moneda === 'dolares') {
-                        return ($c->total ?? 0) * ($c->tipo_cambio ?? 1);
-                    }
-                    return $c->total ?? 0;
-                });
             
             // Cantidad de Pedidos del Mes
             $data['cantidad_pedidos_mes'] = Pedido::whereHas('cotizacion', function ($query) use ($vendedorId) {
@@ -189,6 +205,6 @@ class DashboardController extends Controller
             $data['is_admin'] = false;
         }
 
-        return view('dashboard', compact('data'));
+        return view('dashboard', compact('data', 'ventasSoles', 'ventasDolares'));
     }
 }

@@ -26,18 +26,18 @@
                 <!-- PANEL VENDEDOR -->
                 <!-- KPIs Summary Cards -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <!-- Ventas del Mes -->
+                    <!-- Ventas del Mes en Soles -->
                     <div class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
                         <div class="bg-gradient-to-r from-fenix-green to-green-700 px-6 py-4">
-                            <p class="text-green-100 text-sm font-semibold uppercase tracking-wide">Ventas del Mes</p>
+                            <p class="text-green-100 text-sm font-semibold uppercase tracking-wide">Ventas del Mes en Soles</p>
                         </div>
                         <div class="px-6 py-6">
-                            <h4 class="text-4xl font-bold text-fenix-green">S/. {{ number_format($data['ventas_mes'] ?? 0, 2) }}</h4>
-                            <p class="text-gray-500 text-sm mt-2">💰 Total acumulado</p>
+                            <h4 class="text-4xl font-bold text-fenix-green">S/. {{ number_format($ventasSoles ?? 0, 2) }}</h4>
+                            <p class="text-gray-500 text-sm mt-2">💰 Total acumulado PEN</p>
                         </div>
                     </div>
 
-                    <!-- Cotizaciones del Mes -->
+                    <!-- Cotizaciones del Mes (Pedidos Mes) -->
                     <div class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
                         <div class="bg-gradient-to-r from-fenix-gold to-yellow-600 px-6 py-4">
                             <p class="text-amber-900 text-sm font-semibold uppercase tracking-wide">Pedidos Mes</p>
@@ -48,16 +48,14 @@
                         </div>
                     </div>
 
-                    <!-- Promedio por Pedido -->
+                    <!-- Ventas del Mes en Dólares -->
                     <div class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
-                        <div class="bg-gradient-to-r from-blue-500 to-blue-700 px-6 py-4">
-                            <p class="text-blue-100 text-sm font-semibold uppercase tracking-wide">Ticket Promedio</p>
+                        <div class="bg-gradient-to-r from-purple-500 to-indigo-600 px-6 py-4">
+                            <p class="text-purple-100 text-sm font-semibold uppercase tracking-wide">Ventas del Mes en Dólares</p>
                         </div>
                         <div class="px-6 py-6">
-                            <h4 class="text-4xl font-bold text-blue-600">
-                                S/. {{ $data['cantidad_pedidos_mes'] > 0 ? number_format(($data['ventas_mes'] ?? 0) / $data['cantidad_pedidos_mes'], 2) : '0.00' }}
-                            </h4>
-                            <p class="text-gray-500 text-sm mt-2">📊 Promedio por pedido</p>
+                            <h4 class="text-4xl font-bold text-indigo-600">$ {{ number_format($ventasDolares ?? 0, 2) }}</h4>
+                            <p class="text-gray-500 text-sm mt-2">💵 Total acumulado USD</p>
                         </div>
                     </div>
                 </div>
