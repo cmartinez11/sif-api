@@ -23,12 +23,6 @@
                 <span class="font-medium">@plasticosfenix</span>
             </div>
             <div class="flex items-center gap-2">
-                <i class="fab fa-whatsapp text-[#25D366] text-xl"></i>
-                <span class="font-medium">+51 912 421 813</span>
-                <br>
-                <span class="font-medium">+51 947 271 051</span>
-            </div>
-            <div class="flex items-center gap-2">
                 <i class="fas fa-globe text-[#0CC954] text-xl"></i>
                 <span class="font-medium">plasticosfenix.com</span>
             </div>

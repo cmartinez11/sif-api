@@ -19,6 +19,10 @@
                         <input type="email" name="email" required class="mt-1 block w-full rounded-md border-gray-300">
                     </div>
                     <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Celular</label>
+                        <input type="text" name="celular" class="mt-1 block w-full rounded-md border-gray-300" value="{{ old('celular') }}">
+                    </div>
+                    <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700">Contraseña</label>
                         <input type="password" name="password" required class="mt-1 block w-full rounded-md border-gray-300">
                     </div>

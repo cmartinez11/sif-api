@@ -21,10 +21,13 @@
                 <i class="fas fa-times"></i>
             </button>
         </div>
-
-        <!-- Body -->
-        <div class="p-6 space-y-4">
+        <!-- Body and Footer protected by existence check -->
+        <template x-if="typeof perdidaData !== 'undefined'">
+            <div>
+                <!-- Body -->
+                <div class="p-6 space-y-4">
             <p class="text-sm text-gray-600 border-b pb-2 italic">
+
                 Indique por qué perdimos este producto para mejorar nuestra competitividad.
             </p>
 
@@ -93,22 +96,25 @@
             </div>
         </div>
 
-        <!-- Footer -->
-        <div class="px-6 py-4 bg-gray-50 border-t flex justify-between items-center">
-            <button @click="removeItem(perdidaIndex); cerrarModalPerdida()" 
-                    class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-bold rounded-lg shadow transition">
-                Eliminar por Error
-            </button>
-            <div class="flex gap-3">
-                <button @click="cerrarModalPerdida()" 
-                        class="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 transition">
-                    Cancelar
-                </button>
-                <button @click="confirmarPerdida()" 
-                        class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-lg transition transform hover:scale-105">
-                    Confirmar Pérdida
-                </button>
+                <!-- Footer -->
+                <div class="px-6 py-4 bg-gray-50 border-t flex justify-between items-center">
+                    <button @click="removeItem(perdidaIndex); cerrarModalPerdida()" 
+                            class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-bold rounded-lg shadow transition">
+                        Eliminar por Error
+                    </button>
+                    <div class="flex gap-3">
+                        <button @click="cerrarModalPerdida()" 
+                                class="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 transition">
+                            Cancelar
+                        </button>
+                        <button @click="confirmarPerdida()" 
+                                class="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-lg transition transform hover:scale-105">
+                            Confirmar Pérdida
+                        </button>
+                    </div>
+                </div>
             </div>
-        </div>
+        </template>
     </div>
 </div>
+

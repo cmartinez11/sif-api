@@ -36,6 +36,16 @@
                         <p class="text-xs text-gray-400 mt-1 italic">El correo electrónico es el identificador único y no puede cambiarse.</p>
                     </div>
 
+                    <!-- Celular -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-bold mb-2">Celular</label>
+                        <input type="text" name="celular" value="{{ old('celular', $user->celular) }}" 
+                               class="w-full rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm shadow-sm focus:border-fenix-green focus:outline-none focus:ring-2 focus:ring-fenix-green/20 transition">
+                        @error('celular')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     <!-- Contraseña -->
                     <div class="mb-8">
                         <label class="block text-gray-700 font-bold mb-2">Nueva Contraseña</label>
