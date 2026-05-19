@@ -351,4 +351,35 @@ class PedidoController extends Controller
         }
     }
 
+    public function revertirACotizacion(Pedido $pedido)
+    {
+        // Seguridad: Solo Supervisor o Administrador
+        if (!auth()->user()->hasAnyRole(['Supervisor', 'Administrador'])) {
+            abort(403, 'No tienes permiso para revertir el pedido.');
+        }
+
+        // Validación: Solo si el pedido tiene el estado 'Pendiente'
+        if ($pedido->estado !== 'Pendiente') {
+            return back()->with('error', 'Acción denegada: Solo se pueden revertir pedidos con estado Pendiente.');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $cotizacion = $pedido->cotizacion;
+            if ($cotizacion) {
+                $cotizacion->estado = 'Borrador';
+                $cotizacion->save();
+            }
+
+            $pedido->delete();
+
+            DB::commit();
+            return redirect()->route('pedidos.index')->with('success', 'El pedido ha sido revertido a cotización y eliminado exitosamente.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Ocurrió un error al revertir el pedido: ' . $e->getMessage());
+        }
+    }
+
 }

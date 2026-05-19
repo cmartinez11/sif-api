@@ -49,6 +49,7 @@ Route::middleware('auth')->group(function () {
     Route::get('pedidos/{pedido}/picking', [App\Http\Controllers\PedidoController::class, 'descargarPicking'])->name('pedidos.picking');
     Route::post('pedidos/{pedido}/confirmar-fecha', [App\Http\Controllers\PedidoController::class, 'confirmarFecha'])->name('pedidos.confirmar_fecha');
     Route::post('pedidos/{pedido}/cancelar-backorder', [App\Http\Controllers\PedidoController::class, 'cancelarBackorder'])->name('pedidos.cancelar_backorder');
+    Route::post('pedidos/{pedido}/revertir-a-cotizacion', [App\Http\Controllers\PedidoController::class, 'revertirACotizacion'])->name('pedidos.revertir_a_cotizacion');
     // Route::get('pedidos/{pedido}/descargar-pdf', [App\Http\Controllers\PedidoController::class, 'descargarPdf'])->name('pedidos.pdf');
 
     Route::resource('users', App\Http\Controllers\UserController::class);
@@ -61,9 +62,10 @@ Route::middleware('auth')->group(function () {
         Route::get('importar/template/{type}', [App\Http\Controllers\ImportController::class, 'downloadTemplate'])->name('importacion.template');
     });
 
-    Route::middleware(['auth', 'role:Administrador|Vendedor'])->group(function(){
+    Route::middleware(['auth', 'role:Administrador|Vendedor|Supervisor'])->group(function(){
         Route::resource('cotizaciones', App\Http\Controllers\CotizacionController::class);
         Route::post('cotizaciones/{cotizacion}/anular', [App\Http\Controllers\CotizacionController::class, 'anular'])->name('cotizaciones.anular');
+        Route::get('cotizaciones/{id}/duplicar', [App\Http\Controllers\CotizacionController::class, 'duplicar'])->name('cotizaciones.duplicar');
     });
 
     Route::prefix('crm')->group(function () {

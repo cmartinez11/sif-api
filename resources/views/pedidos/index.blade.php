@@ -116,39 +116,57 @@
                                             </span>
                                         </td>
                                         <td class="px-3 py-4 flex flex-wrap items-center justify-center gap-1 min-w-[200px]">
-                                            <a href="{{ route('pedidos.show', $p->numero ?? $p->id) }}" class="bg-blue-500 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-[10px] transition-colors">Ver</a>
-                                            
-                                            @hasanyrole('Logistico|Administrador|Supervisor')
-                                                @if($p->estado == 'Aprobado')
-                                                    <a href="{{ route('pedidos.picking', $p->numero ?? $p->id) }}" class="bg-indigo-600 hover:bg-indigo-800 text-white px-3 py-1.5 rounded text-[10px] flex items-center gap-1 transition-colors">
-                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                                                        </svg>
-                                                        Picking
-                                                    </a>
-                                                @endif
-                                            @endhasanyrole
-    
-                                            @if(auth()->user()->hasAnyRole(['Logistico', 'Supervisor', 'Administrador']) && !in_array($p->estado, ['Entregado', 'Anulado', 'Cancelado por el cliente']))
-                                            <form action="{{ route('pedidos.update_estado', $p->numero ?? $p->id) }}" method="POST" class="flex gap-1">
-                                                @csrf
-                                                <select name="estado" class="text-[10px] py-1 px-2 border-gray-300 rounded shadow-sm">
-                                                    @php
-                                                        $indiceActual = \App\Models\Pedido::indiceEstado($p->estado) !== false ? \App\Models\Pedido::indiceEstado($p->estado) : 0;
-                                                        $estadosManuales = ['Pendiente', 'En Revisión', 'Despachado', 'Entregado'];
-                                                        if (!in_array($p->estado, $estadosManuales)) { $estadosManuales[] = $p->estado; }
-                                                    @endphp
-                                                    @foreach(\App\Models\Pedido::ESTADOS_ORDEN as $estadoOpcion)
-                                                        @php $indiceOpcion = \App\Models\Pedido::indiceEstado($estadoOpcion); @endphp
-                                                        @if(in_array($estadoOpcion, $estadosManuales) && $indiceOpcion !== false && $indiceOpcion >= $indiceActual)
-                                                            <option value="{{ $estadoOpcion }}" {{ $p->estado == $estadoOpcion ? 'selected' : '' }}>{{ $estadoOpcion }}</option>
-                                                        @endif
-                                                    @endforeach
-                                                </select>
-                                                <button type="submit" class="bg-fenix-green text-white px-2 py-1 rounded text-[10px] font-bold">OK</button>
-                                            </form>
-                                            @endif
-                                        </td>
+                                             <a href="{{ route('pedidos.show', $p->numero ?? $p->id) }}" class="bg-blue-500 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-[10px] transition-colors">Ver</a>
+                                             
+                                             @role('Supervisor')
+                                                 @if($p->estado === 'Pendiente')
+                                                     <form action="{{ route('pedidos.revertir_a_cotizacion', $p->numero ?? $p->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Está seguro de que desea revertir este pedido a cotización? Esta acción eliminará el pedido.')">
+                                                         @csrf
+                                                         <button type="submit" class="bg-red-600 hover:bg-red-800 text-white px-3 py-1.5 rounded text-[10px] flex items-center gap-1 transition-colors">
+                                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
+                                                             </svg>
+                                                             Retroceder a Cotización
+                                                         </button>
+                                                     </form>
+                                                 @endif
+                                             @endrole
+
+                                             @hasanyrole('Logistico|Administrador')
+                                                 @if($p->estado == 'Aprobado')
+                                                     <a href="{{ route('pedidos.picking', $p->numero ?? $p->id) }}" class="bg-indigo-600 hover:bg-indigo-800 text-white px-3 py-1.5 rounded text-[10px] flex items-center gap-1 transition-colors">
+                                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                                         </svg>
+                                                         Picking
+                                                     </a>
+                                                 @endif
+                                             @endhasanyrole
+     
+                                             @if(auth()->user()->hasAnyRole(['Logistico', 'Administrador']) && !in_array($p->estado, ['Entregado', 'Anulado', 'Cancelado por el cliente']))
+                                             <form action="{{ route('pedidos.update_estado', $p->numero ?? $p->id) }}" method="POST" class="flex gap-1">
+                                                 @csrf
+                                                 <select name="estado" class="text-[10px] py-1 px-2 border-gray-300 rounded shadow-sm">
+                                                     @php
+                                                         $indiceActual = \App\Models\Pedido::indiceEstado($p->estado) !== false ? \App\Models\Pedido::indiceEstado($p->estado) : 0;
+                                                         $estadosManuales = ['Pendiente', 'En Revisión', 'Despachado', 'Entregado'];
+                                                         if (!in_array($p->estado, $estadosManuales)) { $estadosManuales[] = $p->estado; }
+                                                     @endphp
+                                                     @foreach(\App\Models\Pedido::ESTADOS_ORDEN as $estadoOpcion)
+                                                         @php $indiceOpcion = \App\Models\Pedido::indiceEstado($estadoOpcion); @endphp
+                                                         @if(in_array($estadoOpcion, $estadosManuales) && $indiceOpcion !== false && $indiceOpcion >= $indiceActual)
+                                                             <option value="{{ $estadoOpcion }}" {{ $p->estado == $estadoOpcion ? 'selected' : '' }}>{{ $estadoOpcion }}</option>
+                                                         @endif
+                                                     @endforeach
+                                                 </select>
+                                                 <button type="submit" class="bg-fenix-green text-white px-2 py-1 rounded text-[10px] font-bold">OK</button>
+                                             </form>
+                                             @elseif(auth()->user()->hasRole('Vendedor'))
+                                             <select disabled class="text-[10px] py-1 px-2 border-gray-300 rounded shadow-sm bg-gray-100 text-gray-500 cursor-not-allowed">
+                                                 <option selected>{{ $p->estado }}</option>
+                                             </select>
+                                             @endif
+                                         </td>
                                     </tr>
                                 @empty
                                     <tr><td colspan="{{ !auth()->user()->hasRole('Vendedor') ? 9 : 8 }}" class="px-6 py-4 text-sm text-center">No hay pedidos registrados.</td></tr>
