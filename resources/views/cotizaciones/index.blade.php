@@ -58,6 +58,12 @@
                                         <td class="px-3 md:px-6 py-4 text-xs md:text-sm flex flex-wrap gap-1 md:gap-2">
                                             <a href="{{ route('cotizaciones.show', $c) }}" class="bg-blue-500 text-white px-2 py-1 rounded text-[10px] md:text-xs hover:bg-blue-600">Ver</a>
                                             
+                                            @role('Vendedor')
+                                                <a href="{{ route('cotizaciones.duplicar', $c->id) }}" class="bg-cyan-500 hover:bg-cyan-600 text-white px-2 py-1 rounded text-[10px] md:text-xs shadow-sm transition">
+                                                    Duplicar
+                                                </a>
+                                            @endrole
+                                            
                                             @if($c->estado === 'Borrador')
                                                 <a href="{{ route('cotizaciones.edit', $c) }}" class="bg-yellow-500 text-black px-2 py-1 rounded text-[10px] md:text-xs hover:bg-yellow-600">Editar</a>
                                             @endif

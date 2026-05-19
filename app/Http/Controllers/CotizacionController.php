@@ -605,4 +605,40 @@ class CotizacionController extends Controller
 
         return redirect()->route('cotizaciones.index')->with('success', 'Cotización anulada correctamente.');
     }
+
+    public function duplicar($id)
+    {
+        if (!auth()->user()->hasRole('Vendedor')) {
+            abort(403, 'No tienes permiso para duplicar cotizaciones.');
+        }
+
+        $cotizacion = Cotizacion::with('items')->findOrFail($id);
+        
+        $this->authorizeVendedor($cotizacion);
+
+        try {
+            \Illuminate\Support\Facades\DB::beginTransaction();
+
+            $nuevaCotizacion = $cotizacion->replicate();
+            $nuevaCotizacion->estado = 'Borrador';
+            
+            $lastQuote = Cotizacion::orderBy('id', 'desc')->first();
+            $nextId = $lastQuote ? $lastQuote->id + 1 : 1;
+            $nuevaCotizacion->numero = str_pad($nextId, 12, '0', STR_PAD_LEFT);
+            $nuevaCotizacion->fecha_emision = now()->format('Y-m-d');
+            $nuevaCotizacion->save();
+
+            foreach ($cotizacion->items as $item) {
+                $nuevoItem = $item->replicate();
+                $nuevoItem->cotizacion_id = $nuevaCotizacion->id;
+                $nuevoItem->save();
+            }
+
+            \Illuminate\Support\Facades\DB::commit();
+            return redirect()->route('cotizaciones.index')->with('success', 'Cotización duplicada correctamente.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return redirect()->route('cotizaciones.index')->with('error', 'Ocurrió un error al duplicar la cotización: ' . $e->getMessage());
+        }
+    }
 }
