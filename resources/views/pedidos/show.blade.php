@@ -194,7 +194,8 @@
 
                                             $cantidadFinal = $tieneAjuste ? (float) $despachos[$item->id] : $cantidadOriginal;
                                             $huboCambio = $tieneAjuste && ($cantidadFinal != $cantidadOriginal);
-                                            $unidadVisual = $item->producto->unidad_medida ?? $item->unidad_medida ?? '';
+                                            
+                                            $unidadVisual = $item->unidad_medida ?? ($item->producto->unidad_medida ?? '');
 
                                             // 4. RECÁLCULO MATEMÁTICO
                                             $precioTotalFila = $item->precio_total; 
@@ -380,7 +381,7 @@
         function pedidoDetalle() {
             return {
                 modalPerdidaOpen: false,
-                perdidaIndex: null, // No se usa en este contexto pero el modal lo requiere
+                perdidaIndex: null,
                 perdidaData: {
                     proveedor_nombre: '',
                     motivo_perdida: '',
@@ -395,10 +396,7 @@
                 cerrarModalPerdida() {
                     this.modalPerdidaOpen = false;
                 },
-                removeItem(index) {
-                    // Función requerida por el modal-perdida-item.blade.php
-                    // En este contexto de cancelación de saldo, no hacemos nada extra.
-                },
+                removeItem(index) {},
                 confirmarPerdida() {
                     if (!this.perdidaData.motivo_perdida) {
                         alert('Debe ingresar un motivo de pérdida.');
