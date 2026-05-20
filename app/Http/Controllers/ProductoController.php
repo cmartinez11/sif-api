@@ -4,15 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Producto;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ProductoController extends Controller
 {
-
     public function __construct()
     {
-        // Esta línea protege el sistema: 
-        // Solo Admin y Supervisor pueden crear, editar o borrar.
-        // Los vendedores solo pueden ver (index y show).
+        // Esta línea protege el sistema: Solo Admin y Supervisor manejan escritura.
         $this->middleware('role:Administrador|Supervisor')->except(['index','show']);
     }
 
@@ -52,8 +50,8 @@ class ProductoController extends Controller
             'unidad_medida_logistica' => 'nullable|string|max:255',
         ]);
 
-        // Evitar el error 500 de Postgres por la columna 'stock' nula
-        $validated['stock'] = 0; 
+        // Evitar el error 500 de Postgres permitiendo un valor inicial decimal limpio
+        $validated['stock'] = 0.000; 
 
         Producto::create($validated);
         return redirect()->route('productos.index')->with('success', 'Producto creado exitosamente.');
@@ -78,7 +76,6 @@ class ProductoController extends Controller
     public function update(Request $request, Producto $producto)
     {
         $validated = $request->validate([
-            // 'codigo' no se valida ni actualiza por seguridad
             'nombre' => 'required|string|max:255',
             'unidad_medida' => 'nullable|string|max:255',
             'precio_base' => 'required|numeric|min:0',
@@ -97,5 +94,98 @@ class ProductoController extends Controller
     {
         $producto->delete();
         return redirect()->route('productos.index')->with('success', 'Producto eliminado exitosamente.');
+    }
+
+    public function cargarStockDiario(Request $request)
+    {
+        $request->validate([
+            'archivo_stock' => 'required|file',
+        ]);
+
+        $file = $request->file('archivo_stock');
+        $extension = strtolower($file->getClientOriginalExtension());
+        if (!in_array($extension, ['xls', 'csv', 'txt'])) {
+            return redirect()->back()->withErrors(['archivo_stock' => 'El archivo debe tener extensión .xls, .csv o .txt.']);
+        }
+
+        $path = $file->getRealPath();
+        $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if ($lines === false) {
+            return redirect()->back()->with('error', 'No se pudo leer el archivo.');
+        }
+
+        $updatedCount = 0;
+
+        DB::beginTransaction();
+        try {
+            foreach ($lines as $index => $linea) {
+                if ($index === 0) {
+                    continue; // Saltar cabecera
+                }
+
+                $parts = explode("\t", $linea);
+
+                $codigo = isset($parts[0]) ? trim($parts[0]) : '';
+                $stockActualRaw = isset($parts[1]) ? trim($parts[1]) : '';
+
+                if ($codigo === '' && $stockActualRaw === '') {
+                    continue;
+                }
+
+                if ($codigo === '') {
+                    throw new \Exception("Fila " . ($index + 1) . ": El código del producto está vacío.");
+                }
+
+                if ($stockActualRaw === '') {
+                    throw new \Exception("Fila " . ($index + 1) . ": Falta el valor del stock para el producto '$codigo'.");
+                }
+
+                // Limpieza preventiva: Reemplazar comas por puntos si el Excel viene con formato regional
+                $stockActualRaw = str_replace(',', '.', $stockActualRaw);
+
+                if (!is_numeric($stockActualRaw)) {
+                    throw new \Exception("Fila " . ($index + 1) . ": El valor del stock actual '{$stockActualRaw}' para el producto '{$codigo}' no es un número válido.");
+                }
+
+                // El casteo a float ahora mantendrá los 3 decimales exactos en la base de datos modificada
+                $stockActual = (float)$stockActualRaw;
+
+                $updated = DB::table('productos')
+                    ->where('codigo', $codigo)
+                    ->update([
+                        'stock' => $stockActual,
+                        'updated_at' => now(),
+                    ]);
+
+                if ($updated) {
+                    $updatedCount++;
+                }
+            }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Error al procesar el archivo: ' . $e->getMessage());
+        }
+
+        return redirect()->back()->with('success', "Stock actualizado exitosamente para {$updatedCount} productos.");
+    }
+
+    public function descargarPlantillaStock()
+    {
+        $headers = [
+            "Content-type"        => "text/tab-separated-values",
+            "Content-Disposition" => "attachment; filename=plantilla_stock_diario.xls",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+        $columns = ['CDG_PROD', 'STK_ACT'];
+        $callback = function() use($columns) {
+            $file = fopen('php://output', 'w');
+            fwrite($file, implode("\t", $columns) . "\n");
+            fclose($file);
+        };
+        return response()->stream($callback, 200, $headers);
     }
 }

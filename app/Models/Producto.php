@@ -11,6 +11,13 @@ class Producto extends Model
     protected $table = 'productos';
     protected $guarded = [];
 
+    protected $cast = [
+        'stock' => 'decimal:3',
+        'precio_base' => 'decimal:2',
+        'peso' => 'decimal:3',
+        'estado' => 'boolean',
+    ];
+
     /**
      * Relación: Un producto puede tener muchos items de cotización
      */

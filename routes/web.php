@@ -23,6 +23,12 @@ Route::middleware('auth')->group(function () {
     Route::get('contactos/search', [App\Http\Controllers\ContactoController::class, 'search'])->name('contactos.search');
     Route::resource('contactos', App\Http\Controllers\ContactoController::class);
     Route::resource('clientes', App\Http\Controllers\ClienteController::class);
+    
+    // RUTAS DE STOCK DIARIO (SUBIDAS AQUÍ PARA EVITAR EL CHOQUE CON EL RESOURCE)
+    Route::get('/productos/descargar-plantilla-stock', [App\Http\Controllers\ProductoController::class, 'descargarPlantillaStock'])->name('productos.descargar_plantilla');
+    Route::post('/productos/cargar-stock-diario', [App\Http\Controllers\ProductoController::class, 'cargarStockDiario'])->name('productos.cargar_stock_diario');
+    
+    // RESOURCE DE PRODUCTOS
     Route::resource('productos', App\Http\Controllers\ProductoController::class);
     
     Route::post('cotizaciones/import-universal', [App\Http\Controllers\CotizacionController::class, 'importUniversal'])->name('cotizaciones.import_universal');
@@ -51,7 +57,6 @@ Route::middleware('auth')->group(function () {
     Route::post('pedidos/{pedido}/confirmar-fecha', [App\Http\Controllers\PedidoController::class, 'confirmarFecha'])->name('pedidos.confirmar_fecha');
     Route::post('pedidos/{pedido}/cancelar-backorder', [App\Http\Controllers\PedidoController::class, 'cancelarBackorder'])->name('pedidos.cancelar_backorder');
     Route::post('pedidos/{pedido}/revertir-a-cotizacion', [App\Http\Controllers\PedidoController::class, 'revertirACotizacion'])->name('pedidos.revertir_a_cotizacion');
-    // Route::get('pedidos/{pedido}/descargar-pdf', [App\Http\Controllers\PedidoController::class, 'descargarPdf'])->name('pedidos.pdf');
 
     Route::resource('users', App\Http\Controllers\UserController::class);
 
