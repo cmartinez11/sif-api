@@ -128,7 +128,8 @@
                                         <th class="px-4 py-3 text-left text-xs uppercase">Código</th>
                                         <th class="px-4 py-3 text-left text-xs uppercase min-w-[200px]">Producto</th>
                                         <th class="px-4 py-3 text-left text-xs uppercase">Línea</th>
-                                        <th class="px-4 py-3 text-left text-xs uppercase">P. Base</th>
+                                        <th class="px-4 py-3 text-left text-xs uppercase">Unidad de medida</th>
+                                        <th class="px-4 py-3 text-left text-xs uppercase">Stock Disp.</th>
                                         <th class="px-4 py-3 text-left text-xs uppercase">Estado</th>
                                         <th class="px-4 py-3 text-left text-xs uppercase">Acciones</th>
                                     </tr>
@@ -142,7 +143,8 @@
                                             <td class="px-4 py-4 text-sm font-bold text-gray-900">{{ $producto->codigo }}</td>
                                             <td class="px-4 py-4 text-sm text-gray-600">{{ $producto->nombre }}</td>
                                             <td class="px-4 py-4 text-sm text-gray-600">{{ $producto->linea ?? 'N/A' }}</td>
-                                            <td class="px-4 py-4 text-sm text-gray-600">{{ number_format($producto->precio_base, 2) }}</td>
+                                            <td class="px-4 py-4 text-sm text-gray-600">{{$producto->unidad_medida}}</td>
+                                            <td class="px-4 py-4 text-sm text-gray-600">{{ $producto->stock }}</td>
                                             <td class="px-4 py-4 text-sm">
                                                 <span class="px-2 py-1 rounded-full text-xs font-bold {{ $producto->estado ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
                                                     {{ $producto->estado ? 'Activo' : 'Inactivo' }}
