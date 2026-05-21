@@ -64,49 +64,83 @@ class PedidoController extends Controller
             return back()->with('error', 'Esta cotización ya fue convertida a pedido.');
         }
 
-        $pedido = new Pedido();
-        
-        // Generar correlativo independiente (P00000001)
-        // Buscamos el último pedido "Principal" (excluyendo backorders con guion)
-        $ultimoPedidoPrincipal = Pedido::where('numero', 'NOT LIKE', '%-%')
-                                       ->latest('id')
-                                       ->first();
+        try {
+            DB::beginTransaction();
 
-        if ($ultimoPedidoPrincipal) {
-            // Extraer la parte numérica (quitando la 'P'), sumar 1 y formatear
-            $numeroEntero = (int) str_replace('P', '', $ultimoPedidoPrincipal->numero);
-            $siguienteNumero = $numeroEntero + 1;
-        } else {
-            // Si es el primer pedido del sistema
-            $siguienteNumero = 1;
+            $pedido = new Pedido();
+            
+            // Generar correlativo independiente (P00000001)
+            // Buscamos el último pedido "Principal" (excluyendo backorders con guion)
+            $ultimoPedidoPrincipal = Pedido::where('numero', 'NOT LIKE', '%-%')
+                                           ->latest('id')
+                                           ->first();
+
+            if ($ultimoPedidoPrincipal) {
+                // Extraer la parte numérica (quitando la 'P'), sumar 1 y formatear
+                $numeroEntero = (int) str_replace('P', '', $ultimoPedidoPrincipal->numero);
+                $siguienteNumero = $numeroEntero + 1;
+            } else {
+                // Si es el primer pedido del sistema
+                $siguienteNumero = 1;
+            }
+
+            $pedido->numero = 'P' . str_pad($siguienteNumero, 8, '0', STR_PAD_LEFT);
+            
+            $pedido->cotizacion_id = $cotizacion->id;
+            $pedido->user_id = $cotizacion->vendedor_id;
+            $pedido->estado = 'Pendiente';
+            $pedido->fecha_pedido = date('Y-m-d');
+            $pedido->fecha_confirmacion = now();
+            $pedido->save();
+
+            // Copiar los ítems activos de la cotización al detalle del pedido
+            $items = $cotizacion->items()->where('estado_item', '!=', 'Rechazado')->get();
+            foreach ($items as $item) {
+                $pedidoItem = new \App\Models\PedidoItem();
+                $pedidoItem->pedido_id = $pedido->id;
+                $pedidoItem->producto_id = $item->producto_id;
+                $pedidoItem->unidad_medida = $item->producto->unidad_medida ?? 'Und';
+                $pedidoItem->precio_unitario = $item->precio_unitario;
+                $pedidoItem->precio_total = $item->precio_total;
+                $pedidoItem->campos_json = $item->campos_json;
+                $pedidoItem->save();
+
+                // Buscar el producto correspondiente en la tabla 'productos' usando su ID.
+                $producto = \App\Models\Producto::findOrFail($item->producto_id);
+
+                // Obtener cantidad de forma precisa de campos_json
+                $campos = json_decode($pedidoItem->campos_json, true) ?: [];
+                $cantidad = 0.0;
+                if (isset($campos['total_kilos']) && $campos['total_kilos'] !== '') {
+                    $cantidad = (float) $campos['total_kilos'];
+                } elseif (isset($campos['total_millares']) && $campos['total_millares'] !== '') {
+                    $cantidad = (float) $campos['total_millares'];
+                } elseif (isset($campos['cantidad']) && $campos['cantidad'] !== '') {
+                    $cantidad = (float) $campos['cantidad'];
+                } elseif (isset($campos['fardo']) && $campos['fardo'] !== '') {
+                    $cantidad = (float) $campos['fardo'];
+                } elseif (isset($campos['cantidad_fardos']) && $campos['cantidad_fardos'] !== '') {
+                    $cantidad = (float) $campos['cantidad_fardos'];
+                } elseif (isset($campos['cantidad_millar']) && $campos['cantidad_millar'] !== '') {
+                    $cantidad = (float) $campos['cantidad_millar'];
+                }
+
+                // Restar la cantidad solicitada (decimales:3) directamente de la columna 'stock' casteando a float en PHP.
+                $producto->stock = (float)$producto->stock - (float)$cantidad;
+                $producto->save();
+            }
+
+            $cotizacion->estado = 'Convertida a Pedido';
+            $cotizacion->save();
+
+            DB::commit();
+
+            return redirect()->route('pedidos.index')->with('success', 'Pedido confirmado exitosamente.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Ocurrió un error al procesar el pedido: ' . $e->getMessage());
         }
-
-        $pedido->numero = 'P' . str_pad($siguienteNumero, 8, '0', STR_PAD_LEFT);
-        
-        $pedido->cotizacion_id = $cotizacion->id;
-        $pedido->user_id = $cotizacion->vendedor_id;
-        $pedido->estado = 'Pendiente';
-        $pedido->fecha_pedido = date('Y-m-d');
-        $pedido->fecha_confirmacion = now();
-        $pedido->save();
-
-        // Copiar los ítems activos de la cotización al detalle del pedido
-        $items = $cotizacion->items()->where('estado_item', '!=', 'Rechazado')->get();
-        foreach ($items as $item) {
-            $pedidoItem = new \App\Models\PedidoItem();
-            $pedidoItem->pedido_id = $pedido->id;
-            $pedidoItem->producto_id = $item->producto_id;
-            $pedidoItem->unidad_medida = $item->producto->unidad_medida ?? 'Und';
-            $pedidoItem->precio_unitario = $item->precio_unitario;
-            $pedidoItem->precio_total = $item->precio_total;
-            $pedidoItem->campos_json = $item->campos_json;
-            $pedidoItem->save();
-        }
-
-        $cotizacion->estado = 'Convertida a Pedido';
-        $cotizacion->save();
-
-        return redirect()->route('pedidos.index')->with('success', 'Pedido confirmado exitosamente.');
     }
 
     public function show(Pedido $pedido)

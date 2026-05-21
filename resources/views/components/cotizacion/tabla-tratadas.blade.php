@@ -19,7 +19,10 @@
                     <td class="px-2 py-4 text-center font-medium" x-text="index + 1"></td>
                     
                     <td class="px-2 py-4 text-center">
-                        <span class="text-xs text-gray-500 whitespace-nowrap" x-text="item.codigo || '-'"></span>
+                        <div class="flex items-center justify-center gap-1">
+                            <span class="text-xs text-gray-500 whitespace-nowrap font-mono" x-text="item.codigo || '-'"></span>
+                            <button type="button" x-show="item.producto_id" @click="consultarStock(index)" class="p-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition shrink-0" title="Ver Stock y Ventas">👁️</button>
+                        </div>
                     </td>
 
                     {{-- Producto --}}

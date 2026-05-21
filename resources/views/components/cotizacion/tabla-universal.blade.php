@@ -19,7 +19,10 @@
                     
                     {{-- Código --}}
                     <td class="px-2 py-4">
-                        <input type="text" readonly x-model="item.codigo" class="w-full text-xs border-0 bg-transparent min-w-[80px]">
+                        <div class="flex items-center gap-1">
+                            <input type="text" readonly x-model="item.codigo" class="w-full text-xs border-0 bg-transparent min-w-[80px] p-0 focus:ring-0">
+                            <button type="button" x-show="item.producto_id" @click="consultarStock(index)" class="p-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition shrink-0" title="Ver Stock y Ventas">👁️</button>
+                        </div>
                     </td>
 
                     {{-- Producto --}}

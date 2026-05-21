@@ -372,6 +372,96 @@
         @include('crm.modal_competencia')
         @include('components.cotizacion.modal-rechazo')
         @include('components.cotizacion.modal-perdida-item')
+
+        <!-- MODAL DE MONITOREO DE STOCK Y VENTAS -->
+        <div x-show="openStockModal"
+             x-cloak
+             class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-opacity"
+             @keydown.escape.window="cerrarStockModal()">
+            
+            <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden transform transition-all duration-300 border border-gray-100 animate-fade-in-down"
+                 x-show="openStockModal"
+                 @click.away="cerrarStockModal()">
+                
+                <!-- CABECERA -->
+                <div class="bg-gradient-to-r from-[#0CC954] to-emerald-500 px-6 py-4 flex justify-between items-center text-white">
+                    <div>
+                        <h3 class="text-lg font-extrabold tracking-tight" x-text="modalStockProduct.nombre"></h3>
+                        <p class="text-xs text-green-100 font-semibold" x-text="'Cód: ' + modalStockProduct.codigo"></p>
+                    </div>
+                    <button type="button" @click="cerrarStockModal()" class="text-white hover:text-green-200 transition duration-150 p-1 rounded-full hover:bg-white/10">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- CONTENIDO -->
+                <div class="p-6 space-y-6">
+                    <!-- LOADING STATE -->
+                    <div x-show="isStockLoading" class="flex flex-col items-center justify-center py-10 space-y-3">
+                        <svg class="animate-spin h-10 w-10 text-[#0CC954]" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="text-sm font-semibold text-gray-500">Consultando stock y ventas...</span>
+                    </div>
+
+                    <!-- DATA STATE -->
+                    <div x-show="!isStockLoading" class="space-y-6" x-cloak>
+                        <!-- STOCK CARD -->
+                        <div class="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-5 shadow-sm text-center relative overflow-hidden">
+                            <div class="absolute -right-6 -bottom-6 text-emerald-200/40 pointer-events-none">
+                                <i class="fas fa-boxes text-7xl"></i>
+                            </div>
+                            <span class="text-xs font-bold text-emerald-700 uppercase tracking-widest block mb-1">Stock Actual en Almacén</span>
+                            <span class="text-3xl font-black text-emerald-600 font-mono tracking-tight" x-text="modalStockProduct.stock"></span>
+                        </div>
+
+                        <!-- LISTADO VENTAS -->
+                        <div class="space-y-3">
+                            <h4 class="text-xs font-black text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="fas fa-shopping-cart text-gray-400"></i>
+                                Pedidos Confirmados Hoy por Vendedora
+                            </h4>
+                            
+                            <!-- TABLA DE VENTAS -->
+                            <div class="border border-gray-150 rounded-xl overflow-hidden shadow-sm" x-show="modalStockProduct.ventas_hoy.length > 0">
+                                <table class="w-full text-sm text-left">
+                                    <thead class="bg-gray-50 text-gray-600 border-b border-gray-150 text-xs font-bold uppercase tracking-wider">
+                                        <tr>
+                                            <th class="px-4 py-3">Vendedora</th>
+                                            <th class="px-4 py-3 text-right">Cantidad Vendida Hoy</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 bg-white">
+                                        <template x-for="venta in modalStockProduct.ventas_hoy" :key="venta.vendedora">
+                                            <tr class="hover:bg-gray-50 transition duration-150">
+                                                <td class="px-4 py-3 font-semibold text-gray-800" x-text="venta.vendedora"></td>
+                                                <td class="px-4 py-3 text-right font-mono text-gray-900 font-bold" x-text="venta.cantidad"></td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- ALERTA SIN VENTAS -->
+                            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center text-sm text-gray-500 font-semibold"
+                                 x-show="modalStockProduct.ventas_hoy.length === 0">
+                                Sin ventas registradas el día de hoy.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ACCIONES DE PIE -->
+                <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-100">
+                    <button type="button" @click="cerrarStockModal()" class="w-full sm:w-auto bg-gray-600 hover:bg-gray-700 text-white font-bold py-2.5 px-6 rounded-lg text-sm transition duration-150 shadow-md">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -401,10 +491,21 @@
                 contacto: {
                     nombre: ''
                 },
+                // Modal de Monitoreo de Stock
+                openStockModal: false,
+                modalStockProduct: {
+                    id: null,
+                    codigo: '',
+                    nombre: '',
+                    stock: '0.000',
+                    ventas_hoy: []
+                },
+                isStockLoading: false,
                 // Inicializamos con una fila vacía
                 items: [{
                     producto_id: '',
                     codigo: '',
+                    nombre: '',
                     cantidad: '',
                     cantidad_millar: '',
                     fardo: '',
@@ -444,6 +545,7 @@
                     this.items.push({
                         producto_id: '',
                         codigo: '',
+                        nombre: '',
                         cantidad: '',
                         cantidad_millar: '',
                         unidad_medida: '',
@@ -582,12 +684,14 @@
 
                     if (opt.value === "") {
                         this.items[index].codigo = '';
+                        this.items[index].nombre = '';
                         this.items[index].precio_unitario = 0;
                         if (nombrePlantilla === 'Universal') this.items[index].unidad = '';
                     } else {
                         // Aseguramos que Alpine registre el producto_id
                         this.items[index].producto_id = productoSeleccionadoId;
                         this.items[index].codigo = opt.getAttribute('data-codigo');
+                        this.items[index].nombre = opt.text.trim();
                         this.items[index].precio_unitario = parseFloat(opt.getAttribute('data-precio') || 0);
                         this.items[index].unidad_medida = opt.getAttribute('data-unidad') || '-';
 
@@ -730,6 +834,51 @@
                         item.perdida_data = JSON.parse(JSON.stringify(this.perdidaData)); // Guardamos todo el objeto
                     }
                     this.cerrarModalPerdida();
+                },
+
+                consultarStock(index) {
+                    const item = this.items[index];
+                    if (!item.producto_id) return;
+
+                    this.isStockLoading = true;
+                    this.modalStockProduct.codigo = item.codigo || '';
+                    this.modalStockProduct.nombre = item.nombre || 'Producto';
+                    this.modalStockProduct.stock = '0.000';
+                    this.modalStockProduct.ventas_hoy = [];
+                    this.openStockModal = true;
+
+                    fetch(`/api/productos/${item.producto_id}/monitoreo-stock`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(res => {
+                        if (!res.ok) throw new Error('Error al consultar stock');
+                        return res.json();
+                    })
+                    .then(data => {
+                        this.modalStockProduct.stock = parseFloat(data.stock || 0).toFixed(3);
+                        this.modalStockProduct.ventas_hoy = data.ventas_hoy || [];
+                        this.isStockLoading = false;
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        alert('Error al obtener datos del stock y ventas del día.');
+                        this.isStockLoading = false;
+                        this.openStockModal = false;
+                    });
+                },
+                cerrarStockModal() {
+                    this.openStockModal = false;
+                    this.modalStockProduct = {
+                        id: null,
+                        codigo: '',
+                        nombre: '',
+                        stock: '0.000',
+                        ventas_hoy: []
+                    };
+                    this.isStockLoading = false;
                 }
             }
         }

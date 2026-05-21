@@ -30,6 +30,7 @@ Route::middleware('auth')->group(function () {
     
     // RESOURCE DE PRODUCTOS
     Route::resource('productos', App\Http\Controllers\ProductoController::class);
+    Route::get('/api/productos/{id}/monitoreo-stock', [App\Http\Controllers\ProductoController::class, 'monitoreoStock'])->name('productos.monitoreo_stock');
     
     Route::post('cotizaciones/import-universal', [App\Http\Controllers\CotizacionController::class, 'importUniversal'])->name('cotizaciones.import_universal');
     Route::get('cotizaciones/download-template-universal', [App\Http\Controllers\CotizacionController::class, 'downloadTemplateUniversal'])->name('cotizaciones.download_template_universal');
@@ -57,6 +58,14 @@ Route::middleware('auth')->group(function () {
     Route::post('pedidos/{pedido}/confirmar-fecha', [App\Http\Controllers\PedidoController::class, 'confirmarFecha'])->name('pedidos.confirmar_fecha');
     Route::post('pedidos/{pedido}/cancelar-backorder', [App\Http\Controllers\PedidoController::class, 'cancelarBackorder'])->name('pedidos.cancelar_backorder');
     Route::post('pedidos/{pedido}/revertir-a-cotizacion', [App\Http\Controllers\PedidoController::class, 'revertirACotizacion'])->name('pedidos.revertir_a_cotizacion');
+
+    // Reporte de Cierre Diario de Stock
+    Route::get('/reportes/cierre-diario', [App\Http\Controllers\ReporteController::class, 'reporteCierreDiario'])
+        ->middleware('role:Administrador|Supervisor')
+        ->name('reportes.cierre_diario');
+    Route::get('/reportes/cierre-diario/descargar', [App\Http\Controllers\ReporteController::class, 'descargarCierreDiario'])
+        ->middleware('role:Administrador|Supervisor')
+        ->name('reportes.cierre_diario.descargar');
 
     Route::resource('users', App\Http\Controllers\UserController::class);
 

@@ -11,7 +11,7 @@ class ProductoController extends Controller
     public function __construct()
     {
         // Esta línea protege el sistema: Solo Admin y Supervisor manejan escritura.
-        $this->middleware('role:Administrador|Supervisor')->except(['index','show']);
+        $this->middleware('role:Administrador|Supervisor')->except(['index','show', 'monitoreoStock']);
     }
 
     public function index()
@@ -187,5 +187,55 @@ class ProductoController extends Controller
             fclose($file);
         };
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Obtener stock actual y ventas del día agrupadas por vendedora para un producto específico.
+     *
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function monitoreoStock($id)
+    {
+        $producto = DB::table('productos')->select('stock')->where('id', $id)->first();
+        if (!$producto) {
+            return response()->json(['error' => 'Producto no encontrado.'], 404);
+        }
+
+        $stock = number_format((float) $producto->stock, 3, '.', '');
+
+        // Obtener ventas del día de hoy agrupadas por vendedora
+        $ventasHoy = DB::table('pedido_items')
+            ->join('pedidos', 'pedido_items.pedido_id', '=', 'pedidos.id')
+            ->join('users', 'pedidos.user_id', '=', 'users.id')
+            ->where('pedido_items.producto_id', $id)
+            ->where('pedidos.fecha_pedido', date('Y-m-d'))
+            ->whereNotIn('pedidos.estado', ['Anulado', 'Cancelado por el cliente', 'Rechazado'])
+            ->select(
+                'users.name as vendedora',
+                DB::raw("SUM(COALESCE(
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'total_kilos', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'total_millares', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'cantidad', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'fardo', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'cantidad_fardos', '') AS NUMERIC),
+                    0
+                )) as cantidad_vendida")
+            )
+            ->groupBy('users.name')
+            ->orderBy('users.name')
+            ->get();
+
+        $ventasAgrupadas = $ventasHoy->map(function ($venta) {
+            return [
+                'vendedora' => $venta->vendedora,
+                'cantidad' => number_format((float) $venta->cantidad_vendida, 3, '.', '')
+            ];
+        });
+
+        return response()->json([
+            'stock' => $stock,
+            'ventas_hoy' => $ventasAgrupadas
+        ]);
     }
 }

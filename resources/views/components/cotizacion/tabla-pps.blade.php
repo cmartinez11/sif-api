@@ -17,7 +17,10 @@
             <tr x-show="!item.oculto" class="border-b" :class="item.estado_item === 'Rechazado' ? 'bg-orange-50 opacity-75' : (index % 2 === 0 ? 'bg-white' : 'bg-gray-50')">
                 <td class="px-2 py-2 text-center" x-text="index + 1"></td>
                 <td class="px-2 py-2">
-                    <input type="text" readonly x-model="item.codigo" class="w-full text-xs border-0 bg-transparent">
+                    <div class="flex items-center gap-1">
+                        <input type="text" readonly x-model="item.codigo" class="w-full text-xs border-0 bg-transparent p-0 focus:ring-0">
+                        <button type="button" x-show="item.producto_id" @click="consultarStock(index)" class="p-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition shrink-0" title="Ver Stock y Ventas">👁️</button>
+                    </div>
                 </td>
                 {{-- Producto --}}
                 <td class="px-2 py-2">

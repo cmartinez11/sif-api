@@ -35,6 +35,11 @@
                     <x-nav-link :href="route('pedidos.index')" :active="request()->routeIs('pedidos.*')">
                         Pedidos
                     </x-nav-link>
+                    @hasanyrole('Administrador|Supervisor')
+                    <x-nav-link :href="route('reportes.cierre_diario')" :active="request()->routeIs('reportes.cierre_diario')">
+                        Cierre Diario
+                    </x-nav-link>
+                    @endhasanyrole
                     @if(auth()->user()->hasRole('Administrador'))
                     <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')" class="text-fenix-gold border-fenix-gold">
                         Gestión Roles/Usuarios
@@ -111,6 +116,11 @@
             <x-responsive-nav-link :href="route('pedidos.index')" :active="request()->routeIs('pedidos.*')">
                 {{ __('Pedidos') }}
             </x-responsive-nav-link>
+            @hasanyrole('Administrador|Supervisor')
+            <x-responsive-nav-link :href="route('reportes.cierre_diario')" :active="request()->routeIs('reportes.cierre_diario')">
+                {{ __('Cierre Diario') }}
+            </x-responsive-nav-link>
+            @endhasanyrole
             @if(auth()->user()->hasRole('Administrador'))
                 <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')" class="text-fenix-gold font-bold">
                     {{ __('Gestión Roles/Usuarios') }}
