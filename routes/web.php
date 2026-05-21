@@ -50,6 +50,8 @@ Route::middleware('auth')->group(function () {
     Route::get('cotizaciones/{cotizacion}/pdf', [App\Http\Controllers\CotizacionController::class, 'generatePdf'])->name('cotizaciones.pdf');
     Route::get('cotizaciones/{cotizacion}/jpg', [App\Http\Controllers\CotizacionController::class, 'descargarJpg'])->name('cotizaciones.jpg');
     
+    Route::get('pedidos/crear/{tipo}', [App\Http\Controllers\PedidoController::class, 'crearDirecto'])->name('pedidos.crear');
+    Route::post('pedidos/store-directo/{tipo}', [App\Http\Controllers\PedidoController::class, 'storeDirecto'])->name('pedidos.store_directo');
     Route::resource('pedidos', App\Http\Controllers\PedidoController::class);
     Route::post('pedidos/{pedido}/estado', [App\Http\Controllers\PedidoController::class, 'updateEstado'])->name('pedidos.update_estado');
     Route::post('pedidos/{pedido}/ajustar-cantidades', [App\Http\Controllers\PedidoController::class, 'ajustarCantidades'])->name('pedidos.ajustar_cantidades');

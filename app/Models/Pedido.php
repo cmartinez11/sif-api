@@ -50,12 +50,81 @@ class Pedido extends Model
         return $this->belongsTo(Cotizacion::class, 'cotizacion_id');
     }
 
+    public function getCotizacionAttribute()
+    {
+        if (isset($this->attributes['cotizacion_id']) && $this->attributes['cotizacion_id'] !== null) {
+            if ($this->relationLoaded('cotizacion')) {
+                return $this->getRelation('cotizacion');
+            }
+            return $this->belongsTo(Cotizacion::class, 'cotizacion_id')->getResults();
+        }
+
+        // Return a dummy cotizacion for direct orders using metadata from cantidades_json
+        $meta = $this->cantidades_json ?? [];
+        
+        $dummy = new \App\Models\Cotizacion();
+        $dummy->id = null;
+        $dummy->numero = 'DIRECTO';
+        $dummy->fecha_emision = $this->fecha_pedido;
+        $dummy->fecha_entrega_estimada = $meta['fecha_entrega_estimada'] ?? $this->fecha_entrega_estimada;
+        $dummy->condicion_pago = $meta['condicion_pago'] ?? 'CONTADO';
+        $dummy->moneda = $meta['moneda'] ?? 'soles';
+        $dummy->tipo_cambio = (float)($meta['tipo_cambio'] ?? 1.0);
+        $dummy->agencia = $meta['agencia'] ?? null;
+        $dummy->direccion_agencia = $meta['direccion_agencia'] ?? null;
+        $dummy->observaciones = $meta['observaciones'] ?? null;
+        $dummy->vendedor_id = $this->user_id;
+
+        // Retrieve actual client if client_id is stored
+        $clienteId = $meta['cliente_id'] ?? null;
+        $cliente = null;
+        if ($clienteId) {
+            $cliente = \App\Models\Cliente::find($clienteId);
+        }
+        if (!$cliente) {
+            $cliente = new \App\Models\Cliente([
+                'nombre' => 'Cliente Directo (N/A)',
+                'ruc' => 'N/A'
+            ]);
+        }
+        $dummy->setRelation('cliente', $cliente);
+
+        // Map template type to template name
+        $tipo = $meta['tipo_directo'] ?? 'universal';
+        $plantillaNombre = 'Universal';
+        if ($tipo === 'tratadas') {
+            $plantillaNombre = 'Tratadas';
+        } elseif ($tipo === 'bolsas-polipropileno') {
+            $plantillaNombre = 'Bolsas de Polipropileno';
+        } elseif ($tipo === 'pets') {
+            $plantillaNombre = 'Pets';
+        } elseif ($tipo === 'bolsas-polipropileno-kilos') {
+            $plantillaNombre = 'Bolsas de Polipropileno por kilos';
+        }
+
+        $dummy->setRelation('plantilla', new \App\Models\Plantilla([
+            'nombre' => $plantillaNombre
+        ]));
+
+        if ($this->relationLoaded('vendedor')) {
+            $dummy->setRelation('vendedor', $this->vendedor);
+        } else {
+            $vendedorObj = \App\Models\User::find($this->user_id);
+            if ($vendedorObj) {
+                $dummy->setRelation('vendedor', $vendedorObj);
+            }
+        }
+
+        return $dummy;
+    }
+
     /**
      * Acceso a través de relación: Pedido -> Cotizacion -> Cliente
      */
     public function cliente()
     {
-        return $this->cotizacion->cliente ?? null;
+        $cot = $this->cotizacion;
+        return $cot ? $cot->cliente : null;
     }
 
     /**
@@ -98,8 +167,9 @@ class Pedido extends Model
             $despachos = json_decode($despachos, true);
         }
         
-        $plantilla = $this->cotizacion->plantilla ?? null;
-        $nombrePlantilla = $plantilla->nombre ?? 'Universal';
+        $cot = $this->cotizacion;
+        $plantilla = $cot ? ($cot->plantilla ?? null) : null;
+        $nombrePlantilla = $plantilla ? ($plantilla->nombre ?? 'Universal') : 'Universal';
 
         if ($items && $items->isNotEmpty()) {
             foreach ($items as $item) {

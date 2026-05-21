@@ -10,7 +10,25 @@
             <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg">
                 <div class="p-4 md:p-6 bg-white border-b border-gray-200">
                     <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 bg-white p-4 rounded-lg shadow-sm border-t-4 border-fenix-gold gap-4">
-                        <h3 class="text-lg md:text-xl font-bold text-gray-800 border-l-4 border-fenix-gold pl-3 whitespace-nowrap">Listado de Pedidos</h3>
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto">
+                            <h3 class="text-lg md:text-xl font-bold text-gray-800 border-l-4 border-fenix-gold pl-3 whitespace-nowrap">Listado de Pedidos</h3>
+                            
+                            <!-- Dropdown para Pedidos Directos -->
+                            <div x-data="{ openDirecto: false }" class="relative inline-block text-left w-full sm:w-auto">
+                                <button @click="openDirecto = !openDirecto" type="button" class="w-full sm:w-auto bg-[#0CC954] hover:bg-green-700 text-white font-bold px-4 py-2 rounded shadow text-xs transition flex items-center justify-center gap-1.5 uppercase">
+                                    <i class="fas fa-plus"></i> Nuevo Pedido Directo <i class="fas fa-chevron-down text-[10px]"></i>
+                                </button>
+                                <div x-show="openDirecto" @click.away="openDirecto = false" class="origin-top-left absolute left-0 mt-2 w-64 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50" x-cloak>
+                                    <div class="py-1">
+                                        <a href="{{ route('pedidos.crear', 'universal') }}" class="text-gray-700 block px-4 py-2.5 text-xs hover:bg-gray-100 font-semibold"><i class="fas fa-file-invoice mr-2 text-emerald-500"></i> Universal</a>
+                                        <a href="{{ route('pedidos.crear', 'tratadas') }}" class="text-gray-700 block px-4 py-2.5 text-xs hover:bg-gray-100 font-semibold"><i class="fas fa-file-invoice mr-2 text-emerald-500"></i> Tratadas</a>
+                                        <a href="{{ route('pedidos.crear', 'bolsas-polipropileno') }}" class="text-gray-700 block px-4 py-2.5 text-xs hover:bg-gray-100 font-semibold"><i class="fas fa-file-invoice mr-2 text-emerald-500"></i> Bolsas de Polipropileno</a>
+                                        <a href="{{ route('pedidos.crear', 'pets') }}" class="text-gray-700 block px-4 py-2.5 text-xs hover:bg-gray-100 font-semibold"><i class="fas fa-file-invoice mr-2 text-emerald-500"></i> Pets</a>
+                                        <a href="{{ route('pedidos.crear', 'bolsas-polipropileno-kilos') }}" class="text-gray-700 block px-4 py-2.5 text-xs hover:bg-gray-100 font-semibold"><i class="fas fa-file-invoice mr-2 text-emerald-500"></i> Bolsas de Polipropileno por Kilos</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
     
                         <form method="GET" action="{{ route('pedidos.index') }}" class="flex flex-col sm:flex-row flex-wrap items-end justify-end gap-3 text-xs w-full">
                             

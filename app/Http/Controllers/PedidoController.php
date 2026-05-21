@@ -451,4 +451,148 @@ class PedidoController extends Controller
         }
     }
 
+    public function crearDirecto($tipo)
+    {
+        $tiposValidos = ['tratadas', 'bolsas-polipropileno', 'pets', 'universal', 'bolsas-polipropileno-kilos'];
+        if (!in_array($tipo, $tiposValidos)) {
+            abort(404);
+        }
+
+        $plantillaNombre = 'Universal';
+        if ($tipo === 'tratadas') {
+            $plantillaNombre = 'Tratadas';
+        } elseif ($tipo === 'bolsas-polipropileno') {
+            $plantillaNombre = 'Bolsas de Polipropileno';
+        } elseif ($tipo === 'pets') {
+            $plantillaNombre = 'Pets';
+        } elseif ($tipo === 'bolsas-polipropileno-kilos') {
+            $plantillaNombre = 'Bolsas de Polipropileno por kilos';
+        }
+
+        $plantilla = \App\Models\Plantilla::where('nombre', $plantillaNombre)->first();
+        if (!$plantilla) {
+            $plantilla = \App\Models\Plantilla::create(['nombre' => $plantillaNombre]);
+        }
+
+        $contactos = \App\Models\Contacto::orderBy('nombre')->get();
+        $clientes = \App\Models\Cliente::with('contacto')->orderBy('nombre')->get();
+        $productos = \App\Models\Producto::orderBy('nombre')->get();
+        $vendedoresCampo = \App\Models\User::role('Vendedor de Campo')->get();
+
+        return view("pedidos.plantilla-{$tipo}.create", compact('plantilla', 'contactos', 'clientes', 'productos', 'vendedoresCampo', 'tipo'));
+    }
+
+    public function storeDirecto(Request $request, $tipo)
+    {
+        $tiposValidos = ['tratadas', 'bolsas-polipropileno', 'pets', 'universal', 'bolsas-polipropileno-kilos'];
+        if (!in_array($tipo, $tiposValidos)) {
+            abort(404);
+        }
+
+        $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'moneda' => 'required|in:soles,dolares',
+            'tipo_cambio' => 'nullable|numeric',
+            'condicion_pago_cotizacion' => 'required|string|in:CONTADO,7 DIAS,10 DIAS,15 DIAS,20 DIAS,30 DIAS,45 DIAS,60 DIAS,90 DIAS',
+            'itemsJson' => 'required',
+            'fecha_entrega_estimada' => 'nullable|date',
+            'vendedor_campo_id' => 'nullable|exists:users,id',
+        ]);
+
+        $items = json_decode($request->itemsJson, true);
+        if (empty($items)) {
+            return back()->with('error', 'El pedido debe tener al menos un producto seleccionado.')->withInput();
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $pedido = new Pedido();
+
+            // Generar correlativo independiente (PXXXXXXXX)
+            $ultimoPedidoPrincipal = Pedido::where('numero', 'NOT LIKE', '%-%')
+                                           ->latest('id')
+                                           ->first();
+
+            if ($ultimoPedidoPrincipal) {
+                $numeroEntero = (int) str_replace('P', '', $ultimoPedidoPrincipal->numero);
+                $siguienteNumero = $numeroEntero + 1;
+            } else {
+                $siguienteNumero = 1;
+            }
+
+            $pedido->numero = 'P' . str_pad($siguienteNumero, 8, '0', STR_PAD_LEFT);
+            
+            $pedido->cotizacion_id = null;
+            $pedido->user_id = auth()->id();
+            $pedido->estado = 'Pendiente';
+            $pedido->fecha_pedido = date('Y-m-d');
+            $pedido->fecha_confirmacion = now();
+
+            $metadata = [
+                'cliente_id' => $request->cliente_id,
+                'tipo_directo' => $tipo,
+                'moneda' => $request->moneda,
+                'tipo_cambio' => (float)($request->tipo_cambio ?? 1.0),
+                'condicion_pago' => $request->input('condicion_pago_cotizacion'),
+                'agencia' => $request->agencia,
+                'direccion_agencia' => $request->direccion_agencia,
+                'observaciones' => $request->observaciones,
+                'fecha_entrega_estimada' => $request->fecha_entrega_estimada,
+                'vendedor_campo_id' => $request->vendedor_campo_id,
+            ];
+            
+            $pedido->cantidades_json = $metadata;
+            $pedido->save();
+
+            foreach ($items as $i) {
+                if (empty($i['producto_id'])) {
+                    continue;
+                }
+
+                $pedidoItem = new \App\Models\PedidoItem();
+                $pedidoItem->pedido_id = $pedido->id;
+                $pedidoItem->producto_id = $i['producto_id'];
+                
+                $producto = \App\Models\Producto::findOrFail($i['producto_id']);
+                $pedidoItem->unidad_medida = $producto->unidad_medida ?? 'Und';
+                $pedidoItem->precio_unitario = (float)($i['precio_unitario'] ?? 0);
+                $pedidoItem->precio_total = (float)($i['precio_total'] ?? 0);
+                $pedidoItem->campos_json = json_encode($i);
+                $pedidoItem->save();
+
+                $cantidad = 0.0;
+                if (isset($i['total_kilos']) && $i['total_kilos'] !== '') {
+                    $cantidad = (float) $i['total_kilos'];
+                } elseif (isset($i['total_millares']) && $i['total_millares'] !== '') {
+                    $cantidad = (float) $i['total_millares'];
+                } elseif (isset($i['cantidad']) && $i['cantidad'] !== '') {
+                    $cantidad = (float) $i['cantidad'];
+                } elseif (isset($i['fardo']) && $i['fardo'] !== '') {
+                    $cantidad = (float) $i['fardo'];
+                } elseif (isset($i['cantidad_fardos']) && $i['cantidad_fardos'] !== '') {
+                    $cantidad = (float) $i['cantidad_fardos'];
+                } elseif (isset($i['cantidad_millar']) && $i['cantidad_millar'] !== '') {
+                    $cantidad = (float) $i['cantidad_millar'];
+                }
+
+                $nuevoStock = (float)$producto->stock - (float)$cantidad;
+                if ($nuevoStock < 0.0) {
+                    $nuevoStock = 0.0;
+                }
+                $producto->stock = $nuevoStock;
+                $producto->save();
+            }
+
+            DB::commit();
+
+            return redirect()->route('pedidos.index')->with('success', 'Pedido directo creado exitosamente.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Ocurrió un error al procesar el pedido directo: ' . $e->getMessage())->withInput();
+        }
+    }
+
 }
+
