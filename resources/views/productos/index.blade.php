@@ -60,30 +60,80 @@
                     </div>
                     @endhasanyrole
 
-                    <div x-data="{ 
-                        search: '', 
-                        products: {{ $productos->map(fn($p) => ['codigo' => $p->codigo, 'nombre' => $p->nombre, 'linea' => $p->linea])->toJson() }},
-                        get hasResults() {
-                            if (this.search === '') return true;
-                            const s = this.search.toLowerCase();
-                            return this.products.some(p => 
-                                p.codigo.toLowerCase().includes(s) || 
-                                p.nombre.toLowerCase().includes(s) ||
-                                (p.linea && p.linea.toLowerCase().includes(s))
-                            );
+                    <!-- Wrapper de Alpine.js -->
+                    <div x-data="{
+                        search: '',
+                        stockFilter: 'all',
+                        lineaFilter: '',
+                        currentPage: 1,
+                        pageSize: 20,
+                        products: {{
+                            $productos->map(fn($p) => [
+                                'id' => $p->id,
+                                'codigo' => $p->codigo,
+                                'nombre' => $p->nombre,
+                                'linea' => $p->linea ?? 'N/A',
+                                'unidad_medida' => $p->unidad_medida ?? 'N/A',
+                                'stock' => (float)($p->stock ?? 0),
+                                'estado' => (bool)$p->estado,
+                                'editUrl' => route('productos.edit', $p),
+                                'deleteUrl' => route('productos.destroy', $p)
+                            ])->toJson()
+                        }},
+                        canEdit: @hasanyrole('Administrador|Supervisor') true @else false @endhasanyrole,
+
+                        get filteredProducts() {
+                            return this.products.filter(p => {
+                                // Filtro de búsqueda (Código, Nombre o Línea)
+                                const s = this.search.toLowerCase().trim();
+                                const matchesSearch = s === '' ||
+                                    p.codigo.toLowerCase().includes(s) ||
+                                    p.nombre.toLowerCase().includes(s) ||
+                                    p.linea.toLowerCase().includes(s);
+
+                                // Filtro de Stock
+                                let matchesStock = true;
+                                if (this.stockFilter === 'with') {
+                                    matchesStock = p.stock > 0;
+                                } else if (this.stockFilter === 'without') {
+                                    matchesStock = p.stock === 0;
+                                }
+
+                                // Filtro de Línea
+                                const matchesLinea = this.lineaFilter === '' || p.linea === this.lineaFilter;
+
+                                return matchesSearch && matchesStock && matchesLinea;
+                            });
+                        },
+
+                        get paginatedProducts() {
+                            const start = (this.currentPage - 1) * this.pageSize;
+                            return this.filteredProducts.slice(start, start + this.pageSize);
+                        },
+
+                        get totalPages() {
+                            return Math.ceil(this.filteredProducts.length / this.pageSize);
+                        },
+
+                        resetPage() {
+                            this.currentPage = 1;
+                        },
+
+                        init() {
+                            this.$watch('search', () => this.resetPage());
+                            this.$watch('stockFilter', () => this.resetPage());
+                            this.$watch('lineaFilter', () => this.resetPage());
+                        },
+
+                        deleteProduct(deleteUrl) {
+                            if (confirm('¿Está seguro de que desea eliminar este producto?')) {
+                                const form = document.getElementById('delete-product-form');
+                                form.action = deleteUrl;
+                                form.submit();
+                            }
                         }
                     }">
-                        <div class="mb-5 flex justify-end">
-                            <div class="relative w-full sm:w-1/2 lg:w-1/3">
-                                <input 
-                                    x-model="search"
-                                    type="text" 
-                                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-fenix-green focus:border-fenix-green text-sm" 
-                                    placeholder="Buscar por nombre, código o línea..."
-                                >
-                            </div>
-                        </div>
-
+                        <!-- Alertas -->
                         @if (session('success'))
                             <div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg relative mb-4 flex items-center gap-2 shadow-sm">
                                 <svg class="w-5 h-5 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -121,53 +171,190 @@
                             </div>
                         @endif
 
-                        <div class="overflow-x-auto">
+                        <!-- Barra de Búsqueda Avanzada -->
+                        <div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm">
+                            <!-- Input de Búsqueda -->
+                            <div>
+                                <label for="search" class="block text-xs font-semibold text-gray-600 mb-1">Buscar producto</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                        </svg>
+                                    </span>
+                                    <input 
+                                        x-model="search"
+                                        type="text" 
+                                        id="search"
+                                        class="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-white" 
+                                        placeholder="Código, nombre o línea..."
+                                    >
+                                </div>
+                            </div>
+
+                            <!-- Selector de Stock -->
+                            <div>
+                                <label for="stockFilter" class="block text-xs font-semibold text-gray-600 mb-1">Filtrar por Stock</label>
+                                <select 
+                                    x-model="stockFilter"
+                                    id="stockFilter"
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-white text-gray-700"
+                                >
+                                    <option value="all">Todos</option>
+                                    <option value="with">Con Stock Disp. (&gt; 0)</option>
+                                    <option value="without">Sin Stock Disp. (= 0)</option>
+                                </select>
+                            </div>
+
+                            <!-- Selector de Línea -->
+                            <div>
+                                <label for="lineaFilter" class="block text-xs font-semibold text-gray-600 mb-1">Filtrar por Línea</label>
+                                <select 
+                                    x-model="lineaFilter"
+                                    id="lineaFilter"
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-white text-gray-700"
+                                >
+                                    <option value="">Todas las líneas</option>
+                                    <option value="BOBINA AD">BOBINA AD</option>
+                                    <option value="BOBINA BD">BOBINA BD</option>
+                                    <option value="BOBINA PP">BOBINA PP</option>
+                                    <option value="BOLSAS AD">BOLSAS AD</option>
+                                    <option value="BOLSAS BD">BOLSAS BD</option>
+                                    <option value="BOLSAS PP">BOLSAS PP</option>
+                                    <option value="PET">PET</option>
+                                    <option value="TERMOFORMADO PP">TERMOFORMADO PP</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Tabla Principal -->
+                        <div class="overflow-x-auto shadow border-b border-gray-200 sm:rounded-lg">
                             <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-fenix-green text-white font-bold whitespace-nowrap">
+                                <thead class="bg-green-600 text-white font-bold whitespace-nowrap">
                                     <tr>
-                                        <th class="px-4 py-3 text-left text-xs uppercase">Código</th>
-                                        <th class="px-4 py-3 text-left text-xs uppercase min-w-[200px]">Producto</th>
-                                        <th class="px-4 py-3 text-left text-xs uppercase">Línea</th>
-                                        <th class="px-4 py-3 text-left text-xs uppercase">Unidad de medida</th>
-                                        <th class="px-4 py-3 text-left text-xs uppercase">Stock Disp.</th>
-                                        <th class="px-4 py-3 text-left text-xs uppercase">Estado</th>
-                                        <th class="px-4 py-3 text-left text-xs uppercase">Acciones</th>
+                                        <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Código</th>
+                                        <th class="px-4 py-3 text-left text-xs uppercase tracking-wider min-w-[200px]">Producto</th>
+                                        <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Línea</th>
+                                        <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Unidad de medida</th>
+                                        <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Stock Disp.</th>
+                                        <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Estado</th>
+                                        <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
-                                    @forelse ($productos as $producto)
-                                        <tr 
-                                            x-show="!search || '{{ $producto->codigo }}'.toLowerCase().includes(search.toLowerCase()) || '{{ $producto->nombre }}'.toLowerCase().includes(search.toLowerCase()) || '{{ $producto->linea }}'.toLowerCase().includes(search.toLowerCase())"
-                                            class="hover:bg-gray-50 transition"
-                                        >
-                                            <td class="px-4 py-4 text-sm font-bold text-gray-900">{{ $producto->codigo }}</td>
-                                            <td class="px-4 py-4 text-sm text-gray-600">{{ $producto->nombre }}</td>
-                                            <td class="px-4 py-4 text-sm text-gray-600">{{ $producto->linea ?? 'N/A' }}</td>
-                                            <td class="px-4 py-4 text-sm text-gray-600">{{$producto->unidad_medida}}</td>
-                                            <td class="px-4 py-4 text-sm text-gray-600">{{ $producto->stock }}</td>
+                                    <!-- Listado de Productos -->
+                                    <template x-for="producto in paginatedProducts" :key="producto.id">
+                                        <tr class="hover:bg-gray-50 transition">
+                                            <td class="px-4 py-4 text-sm font-bold text-gray-900" x-text="producto.codigo"></td>
+                                            <td class="px-4 py-4 text-sm text-gray-600" x-text="producto.nombre"></td>
+                                            <td class="px-4 py-4 text-sm text-gray-600" x-text="producto.linea"></td>
+                                            <td class="px-4 py-4 text-sm text-gray-600" x-text="producto.unidad_medida"></td>
+                                            <td class="px-4 py-4 text-sm text-gray-600 font-mono" x-text="producto.stock.toFixed(3)"></td>
                                             <td class="px-4 py-4 text-sm">
-                                                <span class="px-2 py-1 rounded-full text-xs font-bold {{ $producto->estado ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                                    {{ $producto->estado ? 'Activo' : 'Inactivo' }}
-                                                </span>
+                                                <span 
+                                                    class="px-2 py-1 rounded-full text-xs font-bold" 
+                                                    :class="producto.estado ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                                                    x-text="producto.estado ? 'Activo' : 'Inactivo'"
+                                                ></span>
                                             </td>
                                             <td class="px-4 py-4 text-sm font-medium">
                                                 <div class="flex gap-2">
-                                                    @hasanyrole('Administrador|Supervisor')
-                                                        <a href="{{ route('productos.edit', $producto) }}" class="text-blue-600 hover:text-blue-900">Editar</a>
-                                                        <form action="{{ route('productos.destroy', $producto) }}" method="POST">
-                                                            @csrf @method('DELETE')
-                                                            <button type="submit" class="text-red-600 hover:text-red-900" onclick="return confirm('¿Eliminar?')">Borrar</button>
-                                                        </form>
-                                                    @endhasanyrole
+                                                    <!-- Botones permitidos para Administrador/Supervisor -->
+                                                    <template x-if="canEdit">
+                                                        <div class="flex gap-2">
+                                                            <a :href="producto.editUrl" class="text-blue-600 hover:text-blue-900 transition">Editar</a>
+                                                            <button type="button" @click="deleteProduct(producto.deleteUrl)" class="text-red-600 hover:text-red-900 transition">Borrar</button>
+                                                        </div>
+                                                    </template>
+                                                    <!-- Texto de solo lectura si no tiene privilegios -->
+                                                    <template x-if="!canEdit">
+                                                        <span class="text-gray-400 text-xs italic">Solo lectura</span>
+                                                    </template>
                                                 </div>
                                             </td>
                                         </tr>
-                                    @empty
-                                        <tr><td colspan="6" class="px-6 py-4 text-center">No hay productos.</td></tr>
-                                    @endforelse
+                                    </template>
+
+                                    <!-- Fila de Sin Resultados -->
+                                    <template x-if="filteredProducts.length === 0">
+                                        <tr>
+                                            <td colspan="7" class="px-6 py-10 text-center text-sm text-gray-500">
+                                                <div class="flex flex-col items-center justify-center gap-2">
+                                                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                    </svg>
+                                                    <span>Ningún producto coincide con los filtros aplicados actualmente.</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
                                 </tbody>
                             </table>
                         </div>
+
+                        <!-- Paginación Local -->
+                        <div class="mt-4 flex flex-col sm:flex-row justify-between items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200 text-sm text-gray-600">
+                            <!-- Contador de registros -->
+                            <div>
+                                <span x-text="'Mostrando de ' + (filteredProducts.length === 0 ? 0 : (currentPage - 1) * pageSize + 1) + ' a ' + Math.min(currentPage * pageSize, filteredProducts.length) + ' de ' + filteredProducts.length + ' productos'"></span>
+                            </div>
+
+                            <!-- Botones de navegación -->
+                            <div class="flex items-center gap-2">
+                                <!-- Primera Página -->
+                                <button 
+                                    type="button"
+                                    @click="currentPage = 1"
+                                    :disabled="currentPage === 1"
+                                    class="px-2 py-1.5 rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-gray-700 animate"
+                                    title="Primera página"
+                                >
+                                    ≪
+                                </button>
+                                <!-- Anterior -->
+                                <button 
+                                    type="button"
+                                    @click="currentPage = Math.max(1, currentPage - 1)"
+                                    :disabled="currentPage === 1"
+                                    class="px-2 py-1.5 rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-gray-700"
+                                    title="Página anterior"
+                                >
+                                    ‹
+                                </button>
+
+                                <!-- Indicador de página -->
+                                <span class="px-3 font-semibold text-emerald-600">
+                                    Pág. <span x-text="totalPages === 0 ? 0 : currentPage"></span> de <span x-text="totalPages"></span>
+                                </span>
+
+                                <!-- Siguiente -->
+                                <button 
+                                    type="button"
+                                    @click="currentPage = Math.min(totalPages, currentPage + 1)"
+                                    :disabled="currentPage === totalPages || totalPages === 0"
+                                    class="px-2 py-1.5 rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-gray-700"
+                                    title="Página siguiente"
+                                >
+                                    ›
+                                </button>
+                                <!-- Última Página -->
+                                <button 
+                                    type="button"
+                                    @click="currentPage = totalPages"
+                                    :disabled="currentPage === totalPages || totalPages === 0"
+                                    class="px-2 py-1.5 rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-gray-700"
+                                    title="Última página"
+                                >
+                                    ≫
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Formulario de Eliminación Oculto -->
+                        <form id="delete-product-form" method="POST" class="hidden">
+                            @csrf
+                            @method('DELETE')
+                        </form>
                     </div>
                 </div>
             </div>
