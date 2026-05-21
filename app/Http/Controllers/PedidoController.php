@@ -196,12 +196,32 @@ class PedidoController extends Controller
             'items.*.cantidad' => 'required|numeric|min:0',
         ]);
 
-        $plantilla = $pedido->loadMissing('cotizacion.plantilla')->cotizacion->plantilla->nombre ?? 'Universal';
+        // Resolviendo la plantilla de forma segura (admite pedido directo)
+        $plantilla = 'Universal';
+        if ($pedido->cotizacion_id && $pedido->cotizacion && $pedido->cotizacion->plantilla) {
+            $plantilla = $pedido->cotizacion->plantilla->nombre;
+        } else {
+            $meta = is_string($pedido->cantidades_json) 
+                ? json_decode($pedido->cantidades_json, true) 
+                : ($pedido->cantidades_json ?? []);
+            
+            $tipoDirecto = $meta['tipo_directo'] ?? 'universal';
+            if ($tipoDirecto === 'tratadas') {
+                $plantilla = 'Tratadas';
+            } elseif ($tipoDirecto === 'bolsas-polipropileno') {
+                $plantilla = 'Bolsas de Polipropileno';
+            } elseif ($tipoDirecto === 'pets') {
+                $plantilla = 'Pets';
+            } elseif ($tipoDirecto === 'bolsas-polipropileno-kilos') {
+                $plantilla = 'Bolsas de Polipropileno por kilos';
+            }
+        }
 
         try {
             DB::beginTransaction();
 
-            $saldos = [];
+            $nuevoPedidoSaldo = null;
+            $saldosDespachosJson = [];
 
             foreach ($pedido->items as $item) {
                 if (!isset($request->items[$item->id])) {
@@ -298,62 +318,35 @@ class PedidoController extends Controller
                 // 6. Si la cantidad ingresada es menor, registrar saldo pendiente y comprometer stock
                 if ($newQtyLogistica < $originalQty) {
                     $saldoQty = $originalQty - $newQtyLogistica;
-                    $saldos[] = [
-                        'item' => $item,
-                        'saldoQty' => $saldoQty,
-                        'pesoPromedio' => $pesoPromedio,
-                        'cantidadMillar' => $cantidadMillar
-                    ];
 
-                    $physicalSaldo = $originalPhysicalQty - $newPhysicalQty;
-                    $producto->stock = (float)round((float)$producto->stock - $physicalSaldo, 3);
-                }
+                    // Crear el pedido de saldo (Backorder) bajo demanda en el primer saldo
+                    if (!$nuevoPedidoSaldo) {
+                        $baseNumeroPed = explode('-', $pedido->numero)[0];
+                        
+                        // Cuenta cuántos pedidos existen en la BD que empiecen con esa base usando LIKE
+                        $conteo = Pedido::where('numero', 'LIKE', "{$baseNumeroPed}-%")->count();
+                        
+                        // Genera el nuevo número sumando 1 al conteo y formateando con ceros
+                        $nuevoNumeroCorrelativo = $baseNumeroPed . '-' . str_pad($conteo + 1, 2, '0', STR_PAD_LEFT);
+                        
+                        // Crear cabecera
+                        $nuevoPedidoSaldo = Pedido::create([
+                            'numero' => $nuevoNumeroCorrelativo,
+                            'cotizacion_id' => $pedido->cotizacion_id,
+                            'user_id' => $pedido->user_id,
+                            'estado' => 'Pendiente',
+                            'fecha_pedido' => $pedido->fecha_pedido,
+                            'fecha_confirmacion' => now(),
+                            'fecha_entrega_confirmada' => null,
+                            'cantidades_json' => $pedido->cantidades_json,
+                            'cantidades_despachadas' => null,
+                        ]);
+                    }
 
-                $producto->save();
-            }
-
-            // 7. Actualizar parámetros del pedido y aprobar
-            $pedido->fecha_entrega_confirmada = $request->fecha_entrega_confirmada;
-            $pedido->estado = 'Aprobado';
-            $pedido->cantidades_despachadas = null;
-            $pedido->save();
-
-            // 8. Generación de pedido de saldo (Backorder) si corresponde
-            $nuevoNumeroCorrelativo = null;
-            if (!empty($saldos)) {
-                $baseNumeroPed = explode('-', $pedido->numero)[0];
-                
-                // Cuenta cuántos pedidos existen en la BD que empiecen con esa base usando LIKE
-                $conteo = \App\Models\Pedido::where('numero', 'LIKE', "{$baseNumeroPed}-%")->count();
-                
-                // Genera el nuevo número sumando 1 al conteo y formateando con ceros
-                $nuevoNumeroCorrelativo = $baseNumeroPed . '-' . str_pad($conteo + 1, 2, '0', STR_PAD_LEFT);
-                
-                // Replicar cabecera
-                $nuevoPedido = $pedido->replicate();
-                $nuevoPedido->numero = $nuevoNumeroCorrelativo;
-                $nuevoPedido->estado = 'Pendiente';
-                $nuevoPedido->fecha_entrega_confirmada = null; // Por confirmar
-                $nuevoPedido->fecha_confirmacion = now();
-                $nuevoPedido->cantidades_despachadas = null;
-                $nuevoPedido->save();
-
-                $saldosDespachosJson = [];
-
-                // Copiar únicamente los ítems que quedaron con saldo pendiente
-                foreach ($saldos as $saldoInfo) {
-                    $origItem = $saldoInfo['item'];
-                    $saldoQty = $saldoInfo['saldoQty'];
-                    $pesoPromedio = $saldoInfo['pesoPromedio'];
-                    $cantidadMillar = $saldoInfo['cantidadMillar'];
-
-                    $nuevoItem = $origItem->replicate();
-                    $nuevoItem->pedido_id = $nuevoPedido->id;
-
-                    $camposOrig = json_decode($origItem->campos_json, true) ?: [];
-                    $camposNuevos = $camposOrig;
-
+                    // Calcular cantidad física del saldo
                     $physicalSaldo = 0.0;
+                    $camposNuevos = json_decode($item->campos_json, true) ?: [];
+
                     if (in_array($plantilla, ['Tratadas', 'Pets'])) {
                         $camposNuevos['fardo'] = $saldoQty;
                         $camposNuevos['total_millares'] = $saldoQty * $cantidadMillar;
@@ -371,24 +364,46 @@ class PedidoController extends Controller
                         $physicalSaldo = $saldoQty;
                     }
 
-                    $nuevoItem->precio_total = (float)($physicalSaldo * (float)$origItem->precio_unitario);
-                    $camposNuevos['precio_total'] = $nuevoItem->precio_total;
+                    $precioTotalSaldoItem = (float)($physicalSaldo * (float)$item->precio_unitario);
+                    $camposNuevos['precio_total'] = $precioTotalSaldoItem;
 
-                    $nuevoItem->campos_json = json_encode($camposNuevos);
-                    $nuevoItem->save();
+                    // Insertar físicamente en la tabla 'pedido_items'
+                    $nuevoItemId = DB::table('pedido_items')->insertGetId([
+                        'pedido_id' => $nuevoPedidoSaldo->id,
+                        'producto_id' => $item->producto_id,
+                        'unidad_medida' => $item->unidad_medida ?? 'Und',
+                        'precio_unitario' => $item->precio_unitario,
+                        'precio_total' => $precioTotalSaldoItem,
+                        'campos_json' => json_encode($camposNuevos),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
 
-                    $saldosDespachosJson[$nuevoItem->id] = $saldoQty;
+                    $saldosDespachosJson[$nuevoItemId] = $saldoQty;
+
+                    // Comprometer el stock del saldo
+                    $producto->stock = (float)round((float)$producto->stock - $physicalSaldo, 3);
                 }
 
-                // Guardar la correlación en cantidades_despachadas del backorder
-                $nuevoPedido->cantidades_despachadas = $saldosDespachosJson;
-                $nuevoPedido->save();
+                $producto->save();
+            }
+
+            // 7. Actualizar parámetros del pedido original y aprobar
+            $pedido->fecha_entrega_confirmada = $request->fecha_entrega_confirmada;
+            $pedido->estado = 'Aprobado';
+            $pedido->cantidades_despachadas = null;
+            $pedido->save();
+
+            // 8. Guardar cantidades_despachadas en el backorder si se creó
+            if ($nuevoPedidoSaldo) {
+                $nuevoPedidoSaldo->cantidades_despachadas = $saldosDespachosJson;
+                $nuevoPedidoSaldo->save();
             }
 
             DB::commit();
             
-            $msg = $nuevoNumeroCorrelativo 
-                ? 'Pedido confirmado, aprobado y Backorder ' . $nuevoNumeroCorrelativo . ' generado por el saldo.'
+            $msg = $nuevoPedidoSaldo 
+                ? 'Pedido confirmado, aprobado y Backorder ' . $nuevoPedidoSaldo->numero . ' generado por el saldo.'
                 : 'Pedido confirmado y aprobado exitosamente.';
                 
             return redirect()->route('pedidos.show', $pedido)->with('success', $msg);
@@ -423,8 +438,15 @@ class PedidoController extends Controller
             return back()->with('error', 'La hoja de picking solo puede generarse para pedidos aprobados.');
         }
 
-        // Eager loading
-        $pedido->load(['cotizacion.cliente', 'items.producto', 'cotizacion.plantilla']);
+        $esPedidoDirecto = is_null($pedido->cotizacion_id);
+
+        if ($esPedidoDirecto) {
+            $pedido->load(['items.producto']);
+            $pedido->setRelation('cotizacion', $pedido->cotizacion);
+        } else {
+            // Eager loading
+            $pedido->load(['cotizacion.cliente', 'items.producto', 'cotizacion.plantilla']);
+        }
 
         // Lógica de Logo Base64
         $logoBase64 = null;

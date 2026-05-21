@@ -5,12 +5,14 @@
                 {{ __('Detalle de Pedido') }}: {{ $pedido->numero }}
             </h2>
             <div class="flex items-center space-x-3">
-                <a href="{{ route('pedidos.pdf', $pedido) }}" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow transition ease-in-out duration-150 flex items-center">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                    Descargar PDF
-                </a>
+                @unlessrole('Logistico')
+                    <a href="{{ route('pedidos.pdf', $pedido) }}" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow transition ease-in-out duration-150 flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Descargar PDF
+                    </a>
+                @endunlessrole
                 <a href="{{ route('pedidos.index') }}" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded shadow transition ease-in-out duration-150">
                     Volver al Listado
                 </a>
@@ -177,13 +179,42 @@
                                         @php
                                             $campos = json_decode($item->campos_json, true);
                                             $nombrePlantilla = $pedido->cotizacion->plantilla->nombre;
-                                            
+                                                                                    
                                             // 1. LECTURA DE AJUSTES
                                             $despachos = is_string($pedido->cantidades_despachadas) ? json_decode($pedido->cantidades_despachadas, true) : ($pedido->cantidades_despachadas ?? []);
-                                            $tieneAjuste = is_array($despachos) && array_key_exists($item->id, $despachos);
+                                            $isBackorder = str_contains($pedido->numero, '-');
+                                            $tieneAjuste = false;
+                                            $ajusteQty = null;
+
+                                            if (is_array($despachos) && count($despachos) > 0) {
+                                                if (array_key_exists($item->id, $despachos)) {
+                                                    $tieneAjuste = true;
+                                                    $ajusteQty = (float) $despachos[$item->id];
+                                                } else {
+                                                    // Mapeo por producto para backorders antiguos migrados o desajustes de ID
+                                                    static $prodMap = null;
+                                                    if ($prodMap === null) {
+                                                        $prodMap = [];
+                                                        if ($pedido->cotizacion && $pedido->cotizacion->items) {
+                                                            foreach ($pedido->cotizacion->items as $cotItem) {
+                                                                if (array_key_exists($cotItem->id, $despachos)) {
+                                                                    $prodMap[$cotItem->producto_id] = $despachos[$cotItem->id];
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                    if (array_key_exists($item->producto_id, $prodMap)) {
+                                                        $tieneAjuste = true;
+                                                        $ajusteQty = (float) $prodMap[$item->producto_id];
+                                                    }
+                                                }
+                                            } else {
+                                                if ($isBackorder) {
+                                                    $tieneAjuste = true;
+                                                }
+                                            }
 
                                             // 2. FILTRO BACKORDER
-                                            $isBackorder = str_contains($pedido->numero, '-');
                                             if ($isBackorder && !$tieneAjuste) {
                                                 continue; 
                                             }
@@ -198,8 +229,8 @@
                                                 $cantidadOriginal = (float) ($campos['cantidad'] ?? 0);
                                             }
 
-                                            $cantidadFinal = $tieneAjuste ? (float) $despachos[$item->id] : $cantidadOriginal;
-                                            $huboCambio = $tieneAjuste && ($cantidadFinal != $cantidadOriginal);
+                                            $cantidadFinal = ($ajusteQty !== null) ? $ajusteQty : $cantidadOriginal;
+                                            $huboCambio = $tieneAjuste && ($ajusteQty !== null) && ($cantidadFinal != $cantidadOriginal);
                                             
                                             $unidadVisual = $item->unidad_medida ?? ($item->producto->unidad_medida ?? '');
 

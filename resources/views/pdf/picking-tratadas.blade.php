@@ -123,16 +123,43 @@
                     
                     $despachosRaw = $pedido->cantidades_despachadas;
                     $despachos = is_string($despachosRaw) ? json_decode($despachosRaw, true) : ($despachosRaw ?? []);
-                    
-                    $tieneAjuste = array_key_exists($item->id, $despachos);
-
                     $isBackorder = str_contains($pedido->numero, '-');
+                    $tieneAjuste = false;
+                    $ajusteQty = null;
+
+                    if (is_array($despachos) && count($despachos) > 0) {
+                        if (array_key_exists($item->id, $despachos)) {
+                            $tieneAjuste = true;
+                            $ajusteQty = (float) $despachos[$item->id];
+                        } else {
+                            static $prodMap = null;
+                            if ($prodMap === null) {
+                                $prodMap = [];
+                                if ($pedido->cotizacion && $pedido->cotizacion->items) {
+                                    foreach ($pedido->cotizacion->items as $cotItem) {
+                                        if (array_key_exists($cotItem->id, $despachos)) {
+                                            $prodMap[$cotItem->producto_id] = $despachos[$cotItem->id];
+                                        }
+                                    }
+                                }
+                            }
+                            if (array_key_exists($item->producto_id, $prodMap)) {
+                                $tieneAjuste = true;
+                                $ajusteQty = (float) $prodMap[$item->producto_id];
+                            }
+                        }
+                    } else {
+                        if ($isBackorder) {
+                            $tieneAjuste = true;
+                        }
+                    }
+
                     if ($isBackorder && !$tieneAjuste) {
                         continue;
                     }
 
                     $fardosOriginales = (float)($campos['fardo'] ?? 0);
-                    $cantidadFinal = $tieneAjuste ? (float)$despachos[$item->id] : $fardosOriginales;
+                    $cantidadFinal = ($ajusteQty !== null) ? $ajusteQty : $fardosOriginales;
 
                     $cantidadPorMillar = (float)($campos['cantidad_millar'] ?? 0);
                     $totalDerivado = $cantidadFinal * $cantidadPorMillar; 

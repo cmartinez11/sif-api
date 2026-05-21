@@ -13,6 +13,7 @@
                         <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto">
                             <h3 class="text-lg md:text-xl font-bold text-gray-800 border-l-4 border-fenix-gold pl-3 whitespace-nowrap">Listado de Pedidos</h3>
                             
+                            @hasanyrole('Vendedor|Supervisor|Administrador')
                             <!-- Dropdown para Pedidos Directos -->
                             <div x-data="{ openDirecto: false }" class="relative inline-block text-left w-full sm:w-auto">
                                 <button @click="openDirecto = !openDirecto" type="button" class="w-full sm:w-auto bg-[#0CC954] hover:bg-green-700 text-white font-bold px-4 py-2 rounded shadow text-xs transition flex items-center justify-center gap-1.5 uppercase">
@@ -28,6 +29,7 @@
                                     </div>
                                 </div>
                             </div>
+                            @endhasanyrole
                         </div>
     
                         <form method="GET" action="{{ route('pedidos.index') }}" class="flex flex-col sm:flex-row flex-wrap items-end justify-end gap-3 text-xs w-full">
@@ -135,9 +137,11 @@
                                         </td>
                                         <td class="px-3 py-4 flex flex-wrap items-center justify-center gap-1 min-w-[200px]">
                                              <a href="{{ route('pedidos.show', $p->numero ?? $p->id) }}" class="bg-blue-500 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-[10px] transition-colors">Ver</a>
+                                             @hasanyrole('Vendedor|Supervisor|Administrador')
                                              <a href="{{ route('pedidos.pdf', $p->numero ?? $p->id) }}" class="bg-red-600 hover:bg-red-800 text-white px-3 py-1.5 rounded text-[10px] transition-colors inline-flex items-center gap-1">
                                                  <i class="fas fa-file-pdf"></i> PDF
                                              </a>
+                                             @endhasanyrole
                                              
                                              @role('Supervisor')
                                                  @if($p->estado === 'Pendiente')

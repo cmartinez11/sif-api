@@ -123,17 +123,44 @@
                     
                     $despachosRaw = $pedido->cantidades_despachadas;
                     $despachos = is_string($despachosRaw) ? json_decode($despachosRaw, true) : ($despachosRaw ?? []);
-                    
-                    $tieneAjuste = array_key_exists($item->id, $despachos);
-
                     $isBackorder = str_contains($pedido->numero, '-');
+                    $tieneAjuste = false;
+                    $ajusteQty = null;
+
+                    if (is_array($despachos) && count($despachos) > 0) {
+                        if (array_key_exists($item->id, $despachos)) {
+                            $tieneAjuste = true;
+                            $ajusteQty = (float) $despachos[$item->id];
+                        } else {
+                            static $prodMap = null;
+                            if ($prodMap === null) {
+                                $prodMap = [];
+                                if ($pedido->cotizacion && $pedido->cotizacion->items) {
+                                    foreach ($pedido->cotizacion->items as $cotItem) {
+                                        if (array_key_exists($cotItem->id, $despachos)) {
+                                            $prodMap[$cotItem->producto_id] = $despachos[$cotItem->id];
+                                        }
+                                    }
+                                }
+                            }
+                            if (array_key_exists($item->producto_id, $prodMap)) {
+                                $tieneAjuste = true;
+                                $ajusteQty = (float) $prodMap[$item->producto_id];
+                            }
+                        }
+                    } else {
+                        if ($isBackorder) {
+                            $tieneAjuste = true;
+                        }
+                    }
+
                     if ($isBackorder && !$tieneAjuste) {
                         continue;
                     }
 
                     // Para Bolsas de Polipropileno, la unidad base de picking suelen ser los Fardos
                     $fardosOriginales = (float)($campos['fardo'] ?? 0);
-                    $cantidadFinal = $tieneAjuste ? (float)$despachos[$item->id] : $fardosOriginales;
+                    $cantidadFinal = ($ajusteQty !== null) ? $ajusteQty : $fardosOriginales;
 
                     // El Total a despachar en la unidad derivada (Kilos). Calculamos proporcional si se ajusta.
                     $kilosOriginales = (float)($campos['total_kilos'] ?? 0);
