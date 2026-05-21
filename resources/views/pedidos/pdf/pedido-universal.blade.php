@@ -76,10 +76,19 @@
                         <span class="text-green font-bold">RUC/DNI:</span> {{ $pedido->cotizacion->cliente?->ruc ?? 'N/A' }}<br>
                         <span class="text-green font-bold">DIRECCIÓN:</span> {{ $pedido->cotizacion->cliente?->direccion ?? 'CIUDAD' }}<br>
                         <span class="text-green font-bold">CONDICIÓN PAGO:</span> {{ $pedido->cotizacion->condicion_pago ?? $pedido->cotizacion->cliente?->condicion_pago ?? 'CONTADO' }}<br>
-                        <span class="text-green font-bold">CONTACTO:</span> {{ $pedido->cotizacion->cliente?->contacto?->nombre ?? 'DEPARTAMENTO DE COMPRAS' }}
+                        <span class="text-green font-bold">CONTACTO:</span> {{ $pedido->cotizacion->cliente?->contacto?->nombre ?? 'DEPARTAMENTO DE COMPRAS' }}<br>
+                        @if(!$esPedidoDirecto)
+                            <span class="text-green font-bold">REFERENCIA:</span> Cotización N° {{ $pedido->cotizacion?->numero }}<br>
+                        @else
+                            <span class="text-green font-bold">TIPO DE VENTA:</span> Venta Directa de Almacén<br>
+                        @endif
                     </td>
                     <td style="border: none; width: 40%; vertical-align: top;">
+                        @if(!$esPedidoDirecto)
+                            <span class="text-green font-bold">FECHA COTIZACIÓN:</span> {{ \Carbon\Carbon::parse($pedido->cotizacion?->fecha_emision)->format('d/m/Y') }}<br>
+                        @endif
                         <span class="text-green font-bold">FECHA EMISIÓN:</span> {{ \Carbon\Carbon::parse($pedido->created_at)->format('d/m/Y') }}<br>
+                        <span class="text-green font-bold">FECHA DE ENTREGA:</span> {{ $pedido->fecha_entrega_confirmada ? \Carbon\Carbon::parse($pedido->fecha_entrega_confirmada)->format('d/m/Y') : ($pedido->cotizacion?->fecha_entrega_estimada ? \Carbon\Carbon::parse($pedido->cotizacion->fecha_entrega_estimada)->format('d/m/Y') : 'Por confirmar') }}<br>
                         <span class="text-green font-bold">MONEDA:</span> {{ strtoupper($pedido->cotizacion->moneda) }}<br>
                         @if($pedido->cotizacion->moneda == 'dolares')
                             <span class="text-green font-bold">T.C.:</span> {{ number_format($pedido->cotizacion->tipo_cambio, 3) }}<br>

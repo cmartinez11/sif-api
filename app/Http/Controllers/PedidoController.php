@@ -192,85 +192,135 @@ class PedidoController extends Controller
 
         $request->validate([
             'items' => 'required|array',
+            'fecha_entrega_confirmada' => 'required|date',
+            'items.*.cantidad' => 'required|numeric|min:0',
         ]);
 
-        $plantilla = $pedido->loadMissing('cotizacion.plantilla')->cotizacion->plantilla->nombre;
-
-        $despachosAnteriores = is_string($pedido->cantidades_despachadas) 
-            ? json_decode($pedido->cantidades_despachadas, true) 
-            : ($pedido->cantidades_despachadas ?? []);
-
-        // 1. VALIDACIÓN ESTRICTA (Bloqueo de digitación)
-        foreach ($pedido->items as $item) {
-            $cantidadBase = 0;
-            if (!empty($despachosAnteriores)) {
-                $cantidadBase = floatval($despachosAnteriores[$item->id] ?? 0);
-            } else {
-                $campos = json_decode($item->campos_json, true);
-                if (in_array($plantilla, ['Tratadas', 'Bolsas de Polipropileno', 'Pets'])) {
-                    $cantidadBase = floatval($campos['fardo'] ?? 0);
-                } elseif ($plantilla === 'Bolsas de Polipropileno por kilos') {
-                    $cantidadBase = floatval($campos['cantidad_fardos'] ?? 0);
-                } else {
-                    $cantidadBase = floatval($campos['cantidad'] ?? 0);
-                }
-            }
-
-            $cantidadIngresada = isset($request->items[$item->id]['cantidad']) 
-                                ? floatval($request->items[$item->id]['cantidad']) 
-                                : $cantidadBase;
-
-            if ($cantidadIngresada > $cantidadBase) {
-                return redirect()->back()->with('error', "Error de digitación: No puedes despachar {$cantidadIngresada} unidades del producto '{$item->producto->nombre}'. El máximo permitido para este despacho es {$cantidadBase}.")->withInput();
-            }
-        }
+        $plantilla = $pedido->loadMissing('cotizacion.plantilla')->cotizacion->plantilla->nombre ?? 'Universal';
 
         try {
             DB::beginTransaction();
 
-            $despachoActual = [];
-            $saldosPendientes = [];
-            $generarBackorder = false;
-            $sumaSaldos = 0;
+            $saldos = [];
 
-            // 1. Lectura Dinámica del JSON y Cálculo de Saldos
             foreach ($pedido->items as $item) {
-                $cantidadBase = 0;
-                if (!empty($despachosAnteriores)) {
-                    $cantidadBase = floatval($despachosAnteriores[$item->id] ?? 0);
+                if (!isset($request->items[$item->id])) {
+                    continue;
+                }
+
+                $campos = json_decode($item->campos_json, true) ?: [];
+
+                // 1. Obtener la cantidad física original restada del stock
+                $originalPhysicalQty = 0.0;
+                if (isset($campos['total_kilos']) && $campos['total_kilos'] !== '') {
+                    $originalPhysicalQty = (float)$campos['total_kilos'];
+                } elseif (isset($campos['total_millares']) && $campos['total_millares'] !== '') {
+                    $originalPhysicalQty = (float)$campos['total_millares'];
+                } elseif (isset($campos['cantidad']) && $campos['cantidad'] !== '') {
+                    $originalPhysicalQty = (float)$campos['cantidad'];
+                } elseif (isset($campos['fardo']) && $campos['fardo'] !== '') {
+                    $originalPhysicalQty = (float)$campos['fardo'];
+                } elseif (isset($campos['cantidad_fardos']) && $campos['cantidad_fardos'] !== '') {
+                    $originalPhysicalQty = (float)$campos['cantidad_fardos'];
+                } elseif (isset($campos['cantidad_millar']) && $campos['cantidad_millar'] !== '') {
+                    $originalPhysicalQty = (float)$campos['cantidad_millar'];
+                }
+
+                // Obtener cantidad original visual
+                $originalQty = 0.0;
+                if (in_array($plantilla, ['Tratadas', 'Bolsas de Polipropileno', 'Pets'])) {
+                    $originalQty = (float) ($campos['fardo'] ?? 0);
+                } elseif ($plantilla === 'Bolsas de Polipropileno por kilos') {
+                    $originalQty = (float) ($campos['cantidad_fardos'] ?? 0);
                 } else {
-                    $campos = json_decode($item->campos_json, true);
-                    if (in_array($plantilla, ['Tratadas', 'Bolsas de Polipropileno', 'Pets'])) {
-                        $cantidadBase = floatval($campos['fardo'] ?? 0);
-                    } elseif ($plantilla === 'Bolsas de Polipropileno por kilos') {
-                        $cantidadBase = floatval($campos['cantidad_fardos'] ?? 0);
-                    } else {
-                        $cantidadBase = floatval($campos['cantidad'] ?? 0);
+                    $originalQty = (float) ($campos['cantidad'] ?? 0);
+                }
+
+                // 2. Obtener la nueva cantidad enviada por Logística
+                $newQtyLogistica = (float)$request->items[$item->id]['cantidad'];
+
+                // 3. Calcular la nueva cantidad física y actualizar el JSON
+                $newPhysicalQty = 0.0;
+                $pesoPromedio = 1.0;
+                $cantidadMillar = 1.0;
+
+                if (in_array($plantilla, ['Tratadas', 'Pets'])) {
+                    $cantidadMillar = (float)($campos['cantidad_millar'] ?? 0.0);
+                    $newTotalMillares = $newQtyLogistica * $cantidadMillar;
+                    $newPhysicalQty = $newTotalMillares;
+
+                    $campos['fardo'] = $newQtyLogistica;
+                    $campos['total_millares'] = $newTotalMillares;
+                } elseif ($plantilla === 'Bolsas de Polipropileno') {
+                    $originalFardos = (float)($campos['fardo'] ?? 1.0);
+                    if ($originalFardos <= 0) {
+                        $originalFardos = 1.0;
                     }
+                    $originalKilos = (float)($campos['total_kilos'] ?? 0.0);
+                    $pesoPromedio = $originalKilos / $originalFardos;
+                    
+                    $newTotalKilos = $newQtyLogistica * $pesoPromedio;
+                    $newPhysicalQty = $newTotalKilos;
+
+                    $campos['fardo'] = $newQtyLogistica;
+                    $campos['total_kilos'] = $newTotalKilos;
+                } elseif ($plantilla === 'Bolsas de Polipropileno por kilos') {
+                    $originalFardos = (float)($campos['cantidad_fardos'] ?? 1.0);
+                    if ($originalFardos <= 0) {
+                        $originalFardos = 1.0;
+                    }
+                    $originalKilos = (float)($campos['total_kilos'] ?? 0.0);
+                    $pesoPromedio = $originalKilos / $originalFardos;
+
+                    $newTotalKilos = $newQtyLogistica * $pesoPromedio;
+                    $newPhysicalQty = $newTotalKilos;
+
+                    $campos['cantidad_fardos'] = $newQtyLogistica;
+                    $campos['total_kilos'] = $newTotalKilos;
+                } else {
+                    $newPhysicalQty = $newQtyLogistica;
+                    $campos['cantidad'] = $newQtyLogistica;
                 }
 
-                $cantidadAjustada = floatval($request->items[$item->id]['cantidad'] ?? $cantidadBase);
-                $saldo = $cantidadBase - $cantidadAjustada;
+                // 4. Comparar y actualizar stock físico
+                $diferencia = $newPhysicalQty - $originalPhysicalQty;
 
-                $despachoActual[$item->id] = $cantidadAjustada;
+                $producto = \App\Models\Producto::findOrFail($item->producto_id);
+                // Si Logística aumentó la cantidad, resta de stock; si disminuyó, devuelve a stock
+                $producto->stock = (float)round((float)$producto->stock - $diferencia, 3);
 
-                if ($saldo > 0) {
-                    $saldosPendientes[$item->id] = $saldo;
-                    $sumaSaldos += $saldo;
+                // 5. Recalcular total del ítem y guardar campos_json
+                $item->precio_total = (float)($newPhysicalQty * (float)$item->precio_unitario);
+                $campos['precio_total'] = $item->precio_total;
+                $item->campos_json = json_encode($campos);
+                $item->save();
+
+                // 6. Si la cantidad ingresada es menor, registrar saldo pendiente y comprometer stock
+                if ($newQtyLogistica < $originalQty) {
+                    $saldoQty = $originalQty - $newQtyLogistica;
+                    $saldos[] = [
+                        'item' => $item,
+                        'saldoQty' => $saldoQty,
+                        'pesoPromedio' => $pesoPromedio,
+                        'cantidadMillar' => $cantidadMillar
+                    ];
+
+                    $physicalSaldo = $originalPhysicalQty - $newPhysicalQty;
+                    $producto->stock = (float)round((float)$producto->stock - $physicalSaldo, 3);
                 }
+
+                $producto->save();
             }
 
-            if ($sumaSaldos > 0) {
-                $generarBackorder = true;
-            }
-
-            // 3. Actualización del Pedido Original
-            $pedido->estado = 'Ajustado por Logística';
-            $pedido->cantidades_despachadas = json_encode($despachoActual);
+            // 7. Actualizar parámetros del pedido y aprobar
+            $pedido->fecha_entrega_confirmada = $request->fecha_entrega_confirmada;
+            $pedido->estado = 'Aprobado';
+            $pedido->cantidades_despachadas = null;
             $pedido->save();
 
-            // 4. Generación del Nuevo Pedido (Backorder)
-            if ($generarBackorder) {
+            // 8. Generación de pedido de saldo (Backorder) si corresponde
+            $nuevoNumeroCorrelativo = null;
+            if (!empty($saldos)) {
                 $baseNumeroPed = explode('-', $pedido->numero)[0];
                 
                 // Cuenta cuántos pedidos existen en la BD que empiecen con esa base usando LIKE
@@ -279,39 +329,73 @@ class PedidoController extends Controller
                 // Genera el nuevo número sumando 1 al conteo y formateando con ceros
                 $nuevoNumeroCorrelativo = $baseNumeroPed . '-' . str_pad($conteo + 1, 2, '0', STR_PAD_LEFT);
                 
-                // Crea el nuevo pedido
+                // Replicar cabecera
                 $nuevoPedido = $pedido->replicate();
                 $nuevoPedido->numero = $nuevoNumeroCorrelativo;
                 $nuevoPedido->estado = 'Pendiente';
+                $nuevoPedido->fecha_entrega_confirmada = null; // Por confirmar
+                $nuevoPedido->fecha_confirmacion = now();
+                $nuevoPedido->cantidades_despachadas = null;
                 $nuevoPedido->save();
 
-                // Replicar los detalles del pedido para el Backorder y mapear IDs
-                $idMap = [];
-                foreach ($pedido->items as $item) {
-                    $nuevoItem = $item->replicate();
+                $saldosDespachosJson = [];
+
+                // Copiar únicamente los ítems que quedaron con saldo pendiente
+                foreach ($saldos as $saldoInfo) {
+                    $origItem = $saldoInfo['item'];
+                    $saldoQty = $saldoInfo['saldoQty'];
+                    $pesoPromedio = $saldoInfo['pesoPromedio'];
+                    $cantidadMillar = $saldoInfo['cantidadMillar'];
+
+                    $nuevoItem = $origItem->replicate();
                     $nuevoItem->pedido_id = $nuevoPedido->id;
-                    $nuevoItem->save();
-                    $idMap[$item->id] = $nuevoItem->id;
-                }
 
-                // Ajustar cantidades_despachadas utilizando los nuevos IDs del Backorder
-                $nuevoSaldos = [];
-                foreach ($saldosPendientes as $oldId => $saldo) {
-                    if (isset($idMap[$oldId])) {
-                        $nuevoSaldos[$idMap[$oldId]] = $saldo;
+                    $camposOrig = json_decode($origItem->campos_json, true) ?: [];
+                    $camposNuevos = $camposOrig;
+
+                    $physicalSaldo = 0.0;
+                    if (in_array($plantilla, ['Tratadas', 'Pets'])) {
+                        $camposNuevos['fardo'] = $saldoQty;
+                        $camposNuevos['total_millares'] = $saldoQty * $cantidadMillar;
+                        $physicalSaldo = $camposNuevos['total_millares'];
+                    } elseif (in_array($plantilla, ['Bolsas de Polipropileno', 'Bolsas de Polipropileno por kilos'])) {
+                        if ($plantilla === 'Bolsas de Polipropileno') {
+                            $camposNuevos['fardo'] = $saldoQty;
+                        } else {
+                            $camposNuevos['cantidad_fardos'] = $saldoQty;
+                        }
+                        $camposNuevos['total_kilos'] = $saldoQty * $pesoPromedio;
+                        $physicalSaldo = $camposNuevos['total_kilos'];
+                    } else {
+                        $camposNuevos['cantidad'] = $saldoQty;
+                        $physicalSaldo = $saldoQty;
                     }
+
+                    $nuevoItem->precio_total = (float)($physicalSaldo * (float)$origItem->precio_unitario);
+                    $camposNuevos['precio_total'] = $nuevoItem->precio_total;
+
+                    $nuevoItem->campos_json = json_encode($camposNuevos);
+                    $nuevoItem->save();
+
+                    $saldosDespachosJson[$nuevoItem->id] = $saldoQty;
                 }
 
-                $nuevoPedido->cantidades_despachadas = json_encode($nuevoSaldos);
+                // Guardar la correlación en cantidades_despachadas del backorder
+                $nuevoPedido->cantidades_despachadas = $saldosDespachosJson;
                 $nuevoPedido->save();
             }
 
             DB::commit();
-            return redirect()->route('pedidos.show', $pedido)->with('success', 'Ajuste confirmado y Backorder generado.');
+            
+            $msg = $nuevoNumeroCorrelativo 
+                ? 'Pedido confirmado, aprobado y Backorder ' . $nuevoNumeroCorrelativo . ' generado por el saldo.'
+                : 'Pedido confirmado y aprobado exitosamente.';
+                
+            return redirect()->route('pedidos.show', $pedido)->with('success', $msg);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', $e->getMessage());
+            return back()->with('error', 'Ocurrió un error al procesar el pedido: ' . $e->getMessage())->withInput();
         }
     }
 
@@ -364,6 +448,46 @@ class PedidoController extends Controller
         ]);
 
         return $pdf->download("picking-pedido-{$pedido->numero}.pdf");
+    }
+
+    public function descargarPdf(Pedido $pedido)
+    {
+        if (auth()->user()->hasRole('Vendedor') && $pedido->user_id !== auth()->id()) {
+            abort(403, 'No tienes permiso para descargar este PDF.');
+        }
+
+        $esPedidoDirecto = is_null($pedido->cotizacion_id);
+
+        if ($esPedidoDirecto) {
+            $pedido->load(['items.producto', 'vendedor']);
+            $pedido->setRelation('cotizacion', $pedido->cotizacion);
+        } else {
+            $pedido->load(['cotizacion.cliente', 'items.producto', 'cotizacion.plantilla', 'vendedor']);
+        }
+
+        $logoBase64 = null;
+        $path = public_path('logo2.png');
+        if (file_exists($path)) {
+            $type = pathinfo($path, PATHINFO_EXTENSION);
+            $data = file_get_contents($path);
+            $logoBase64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
+        }
+
+        $plantillaNombre = $pedido->cotizacion->plantilla->nombre ?? 'Universal';
+        $slug = \Illuminate\Support\Str::slug($plantillaNombre);
+
+        $vistaDestino = "pedidos.pdf.pedido-{$slug}";
+        if (!view()->exists($vistaDestino)) {
+            $vistaDestino = 'pedidos.pdf.pedido-universal';
+        }
+
+        $pdf = Pdf::loadView($vistaDestino, [
+            'pedido' => $pedido,
+            'logoBase64' => $logoBase64,
+            'esPedidoDirecto' => $esPedidoDirecto
+        ]);
+
+        return $pdf->download("pedido-{$pedido->numero}.pdf");
     }
 
     public function confirmarFecha(Request $request, Pedido $pedido)

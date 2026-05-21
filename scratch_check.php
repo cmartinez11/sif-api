@@ -4,7 +4,8 @@ $app = require_once 'bootstrap/app.php';
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
+$pedido = \App\Models\Pedido::first();
+if ($pedido) {
+    print_r($pedido->getAttributes());
+}
 
-print_r(Schema::getColumnListing('pedidos'));

@@ -135,6 +135,9 @@
                                         </td>
                                         <td class="px-3 py-4 flex flex-wrap items-center justify-center gap-1 min-w-[200px]">
                                              <a href="{{ route('pedidos.show', $p->numero ?? $p->id) }}" class="bg-blue-500 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-[10px] transition-colors">Ver</a>
+                                             <a href="{{ route('pedidos.pdf', $p->numero ?? $p->id) }}" class="bg-red-600 hover:bg-red-800 text-white px-3 py-1.5 rounded text-[10px] transition-colors inline-flex items-center gap-1">
+                                                 <i class="fas fa-file-pdf"></i> PDF
+                                             </a>
                                              
                                              @role('Supervisor')
                                                  @if($p->estado === 'Pendiente')

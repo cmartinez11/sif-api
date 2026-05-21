@@ -5,6 +5,12 @@
                 {{ __('Detalle de Pedido') }}: {{ $pedido->numero }}
             </h2>
             <div class="flex items-center space-x-3">
+                <a href="{{ route('pedidos.pdf', $pedido) }}" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow transition ease-in-out duration-150 flex items-center">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Descargar PDF
+                </a>
                 <a href="{{ route('pedidos.index') }}" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded shadow transition ease-in-out duration-150">
                     Volver al Listado
                 </a>
@@ -284,7 +290,6 @@
                                                         name="items[{{ $item->id }}][cantidad]" 
                                                         x-model="ajuste" 
                                                         min="0"
-                                                        max="{{ $cantidadFinal }}"
                                                         class="border rounded w-full py-1 px-2 focus:ring-red-500 focus:border-red-500 text-sm font-bold text-orange-600"
                                                         required
                                                     >
@@ -338,38 +343,23 @@
                             </table>
                         </div>
 
-                        <div class="mt-10 flex justify-end gap-4 p-6 bg-gray-50 rounded-b-lg border-t border-gray-200">
+                        <div class="mt-10 flex flex-col md:flex-row justify-end items-center gap-4 p-6 bg-gray-50 rounded-b-lg border-t border-gray-200">
                             @if(auth()->user()->hasAnyRole(['Logistico', 'Supervisor', 'Administrador']) && in_array($pedido->estado, ['Pendiente', 'En Revisión']))
-                                <button type="submit" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transform transition hover:scale-105 duration-150">
-                                    Confirmar Ajuste de Stock
+                                <div class="flex items-center space-x-3 w-full md:w-auto mb-4 md:mb-0">
+                                    <label for="fecha_entrega_confirmada" class="text-sm font-bold text-gray-700 whitespace-nowrap">Fecha de Despacho *:</label>
+                                    <input type="date" name="fecha_entrega_confirmada" id="fecha_entrega_confirmada"
+                                        value="{{ old('fecha_entrega_confirmada', $pedido->fecha_entrega_confirmada ? $pedido->fecha_entrega_confirmada->format('Y-m-d') : ($pedido->cotizacion->fecha_entrega_estimada ? \Carbon\Carbon::parse($pedido->cotizacion->fecha_entrega_estimada)->format('Y-m-d') : '')) }}" 
+                                        class="text-sm border-gray-300 focus:ring-green-500 focus:border-green-500 rounded-md shadow-sm font-bold text-gray-700"
+                                        required>
+                                </div>
+                                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transform transition hover:scale-105 duration-150">
+                                    Confirmar / Guardar
                                 </button>
                             @endif
                         </div>
                     </form>
 
-                    @if($pedido->estado == 'Ajustado por Logística' && auth()->user()->hasAnyRole(['Vendedor', 'Supervisor', 'Administrador']))
-                        <div class="mt-6 bg-orange-50 border-l-4 border-orange-400 p-6 rounded-lg shadow-sm">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0">
-                                    <svg class="h-6 w-6 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                    </svg>
-                                </div>
-                                <div class="ml-4 flex-1">
-                                    <h3 class="text-sm font-bold text-orange-800">Ajuste de Stock Realizado</h3>
-                                    <p class="text-sm text-orange-700 mt-1">Logística ha ajustado las cantidades para este despacho parcial. Por favor, valide con el cliente y proceda con la aprobación.</p>
-                                </div>
-                                <div class="ml-4">
-                                    <form action="{{ route('pedidos.aprobar', $pedido->numero ?? $pedido->id) }}" method="POST">
-                                        @csrf
-                                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded shadow-md transition duration-150">
-                                            Aprobar Despacho
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
+
                 </div>
             </div>
         </div>

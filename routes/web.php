@@ -57,6 +57,7 @@ Route::middleware('auth')->group(function () {
     Route::post('pedidos/{pedido}/ajustar-cantidades', [App\Http\Controllers\PedidoController::class, 'ajustarCantidades'])->name('pedidos.ajustar_cantidades');
     Route::post('pedidos/{pedido}/aprobar', [App\Http\Controllers\PedidoController::class, 'aprobar'])->name('pedidos.aprobar');
     Route::get('pedidos/{pedido}/picking', [App\Http\Controllers\PedidoController::class, 'descargarPicking'])->name('pedidos.picking');
+    Route::get('pedidos/{pedido}/pdf', [App\Http\Controllers\PedidoController::class, 'descargarPdf'])->name('pedidos.pdf');
     Route::post('pedidos/{pedido}/confirmar-fecha', [App\Http\Controllers\PedidoController::class, 'confirmarFecha'])->name('pedidos.confirmar_fecha');
     Route::post('pedidos/{pedido}/cancelar-backorder', [App\Http\Controllers\PedidoController::class, 'cancelarBackorder'])->name('pedidos.cancelar_backorder');
     Route::post('pedidos/{pedido}/revertir-a-cotizacion', [App\Http\Controllers\PedidoController::class, 'revertirACotizacion'])->name('pedidos.revertir_a_cotizacion');
