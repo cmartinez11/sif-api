@@ -14,7 +14,7 @@ class ReporteController extends Controller
      */
     public function __construct()
     {
-        $this->middleware(['auth', 'role:Administrador|Supervisor']);
+        $this->middleware(['auth', 'role:Administrador|Supervisor|Logistico']);
     }
 
     /**

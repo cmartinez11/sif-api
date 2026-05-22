@@ -64,10 +64,10 @@ Route::middleware('auth')->group(function () {
 
     // Reporte de Cierre Diario de Stock
     Route::get('/reportes/cierre-diario', [App\Http\Controllers\ReporteController::class, 'reporteCierreDiario'])
-        ->middleware('role:Administrador|Supervisor')
+        ->middleware('role:Administrador|Supervisor|Logistico')
         ->name('reportes.cierre_diario');
     Route::get('/reportes/cierre-diario/descargar', [App\Http\Controllers\ReporteController::class, 'descargarCierreDiario'])
-        ->middleware('role:Administrador|Supervisor')
+        ->middleware('role:Administrador|Supervisor|Logistico')
         ->name('reportes.cierre_diario.descargar');
 
     Route::resource('users', App\Http\Controllers\UserController::class);

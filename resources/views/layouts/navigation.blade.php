@@ -35,7 +35,7 @@
                     <x-nav-link :href="route('pedidos.index')" :active="request()->routeIs('pedidos.*')">
                         Pedidos
                     </x-nav-link>
-                    @hasanyrole('Administrador|Supervisor')
+                    @hasanyrole('Administrador|Supervisor|Logistico')
                     <x-nav-link :href="route('reportes.cierre_diario')" :active="request()->routeIs('reportes.cierre_diario')">
                         Cierre Diario
                     </x-nav-link>
