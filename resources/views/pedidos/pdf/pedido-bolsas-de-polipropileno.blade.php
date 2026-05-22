@@ -176,19 +176,50 @@
 
         {{-- Footer --}}
         <div class="footer">
-            <table style="border: none; margin: 0;">
+            <table style="border: none; margin: 0; width: 100%; table-layout: fixed;">
                 <tr>
-                    <td style="border: none; width: 60%;">
-                        <h4 class="text-green" style="margin: 0 0 5px 0;">INFORMACIÓN BANCARIA (BCP)</h4>
-                        <span style="font-size: 9px;">
-                            <strong>Cta. Corriente Soles:</strong> 191-2364587-0-55<br>
-                            <strong>CCI:</strong> 002-191-002364587055-52<br>
-                            <strong>Cta. Corriente Dólares:</strong> 191-2364587-1-66
-                        </span>
+                    {{-- Columna Izquierda: Bancos --}}
+                    <td style="border: none; border-right: 1px solid #e5e7eb; width: 55%; vertical-align: top; padding-right: 15px;">
+                        <h4 style="color: #0CC954; font-size: 11px; margin: 0 0 8px 0; font-weight: bold;">CUENTAS BANCARIAS</h4>
+                        <div style="font-size: 9px; line-height: 1.3; color: #333;">
+                            <p style="margin: 0 0 2px 0;"><strong>BCP - Cuenta Corriente:</strong></p>
+                            <p style="margin: 0;"><strong>SOLES:</strong> 191-2246547-0-92</p>
+                            <p style="margin: 0;"><strong>SOLES CCI:</strong> 002-191-002246547092-54</p>
+                            <p style="margin: 0;"><strong>DÓLARES:</strong> 191-2227322-1-11</p>
+                            <p style="margin: 0 0 8px 0;"><strong>DÓLARES CCI:</strong> 002-191-002227322111-53</p>
+                            
+                            <p style="margin: 0 0 2px 0;"><strong>BBVA - Cuenta Corriente:</strong></p>
+                            <p style="margin: 0;"><strong>SOLES:</strong> * CTA RECAUDADORA N°18637 * PLASTICOS FENIX E.I.R.L.</p>
+                            <p style="margin: 0;"><strong>SOLES CCI:</strong> 011-261-000100028190-55</p>
+                            <p style="margin: 0;"><strong>DÓLARES:</strong> * CTA RECAUDADORA N° 19408 * PLASTICOS FENIX EIRL ME</p>
+                            <p style="margin: 0;"><strong>DÓLARES CCI:</strong> 011-261-000100028204-54</p>
+                        </div>
                     </td>
-                    <td style="border: none; width: 40%; text-align: center; vertical-align: middle;">
-                        <strong class="text-green" style="font-size: 12px; letter-spacing: 1px;">"PASIÓN POR EL EMPAQUE"</strong><br>
-                        <span style="font-size: 9px; color: #666;">www.plasticosfenix.com</span>
+
+                    {{-- Columna Derecha: Redes y Contacto --}}
+                    <td style="border: none; width: 45%; vertical-align: top; padding-left: 15px;">
+                        <div style="background-color: #f9fafb; padding: 12px; border-radius: 6px; text-align: center;">
+                            <p style="margin: 0 0 10px 0; font-weight: bold; color: #000; font-size: 11px;">"TU MARCA SIEMPRE RELEVANTE"</p>
+                            
+                            <table style="width: 100%; border: none; margin: 0; font-size: 9px; color: #4b5563; text-align: left;">
+                                <tr>
+                                    <td style="border: none; padding: 3px 0; width: 50%;">
+                                        <strong style="color: #1877F2;">FB:</strong> @plasticosfenix
+                                    </td>
+                                    <td style="border: none; padding: 3px 0;">
+                                        <strong style="color: #000000;">TK:</strong> @plasticosfenix
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="border: none; padding: 3px 0;">
+                                        <strong style="color: #0CC954;">WEB:</strong> plasticosfenix.com
+                                    </td>
+                                    <td style="border: none; padding: 3px 0;">
+                                        <strong style="color: #9ca3af;">MAIL:</strong> comercial@plasticosfenix.com
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
                     </td>
                 </tr>
             </table>
