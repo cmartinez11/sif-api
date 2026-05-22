@@ -230,6 +230,13 @@
     </div>
 
     @if(isset($isJpg) && $isJpg)
+        <style>
+            .page-container {
+                width: 794px;
+                margin: 0 auto;
+                box-sizing: border-box;
+            }
+        </style>
         <!-- Loading overlay -->
         <div id="loading-overlay" style="position: fixed; inset: 0; background: rgba(255,255,255,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; font-family: 'Helvetica', Arial, sans-serif;">
             <div style="border: 4px solid #f3f3f3; border-top: 4px solid #0CC954; border-radius: 50%; width: 45px; height: 45px; animation: spin 1s linear infinite; margin-bottom: 15px;"></div>
@@ -258,14 +265,18 @@
                     target.style.border = 'none';
                     
                     html2canvas(target, {
-                        scale: 2,
+                        scale: 3,
                         useCORS: true,
                         allowTaint: true,
-                        backgroundColor: '#ffffff'
+                        backgroundColor: '#ffffff',
+                        logging: false,
+                        width: 794,
+                        windowWidth: 794,
+                        windowHeight: 1123
                     }).then(canvas => {
                         const link = document.createElement('a');
                         link.download = 'Cotizacion_{{ $cotizacion->numero }}.jpg';
-                        link.href = canvas.toDataURL('image/jpeg', 0.95);
+                        link.href = canvas.toDataURL('image/jpeg', 1.0);
                         document.body.appendChild(link);
                         link.click();
                         document.body.removeChild(link);
