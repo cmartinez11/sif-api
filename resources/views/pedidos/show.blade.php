@@ -194,6 +194,8 @@
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     @php 
                                         $sumatoriaSubtotal = 0; 
+                                        $moneda = strtolower($pedido->moneda ?? $pedido->cotizacion->moneda ?? 'soles');
+                                        $simboloMoneda = in_array($moneda, ['dolares', 'usd']) ? 'US$ ' : 'S/. ';
                                     @endphp
                                     @foreach($pedido->items as $item)
                                         @php
@@ -354,10 +356,10 @@
 
                                             @hasanyrole('Vendedor|Administrador|Supervisor')
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-right">
-                                                    {{ number_format((float)($item->precio_unitario ?? 0), 4) }}
+                                                    {{ $simboloMoneda }}{{ number_format((float)($item->precio_unitario ?? 0), 4) }}
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 text-right">
-                                                    {{ number_format((float)$precioTotalFila, 2) }}
+                                                    {{ $simboloMoneda }}{{ number_format((float)$precioTotalFila, 2) }}
                                                 </td>
                                             @else
                                                 <td class="px-6 py-4 text-center text-gray-400 bg-gray-50 text-xs italic">Oculto</td>
@@ -379,15 +381,15 @@
                                         @endphp
                                         <tr class="bg-gray-50">
                                             <td colspan="{{ $colSpanLabel }}" class="px-6 py-4 text-right text-sm font-bold text-gray-700 uppercase">Subtotal</td>
-                                            <td class="px-6 py-4 text-right text-sm font-bold text-gray-900 text-right">{{ number_format((float)$subtotalNeto, 2) }}</td>
+                                            <td class="px-6 py-4 text-right text-sm font-bold text-gray-900 text-right">{{ $simboloMoneda }}{{ number_format((float)$subtotalNeto, 2) }}</td>
                                         </tr>
                                         <tr class="bg-gray-50 border-t border-gray-200">
                                             <td colspan="{{ $colSpanLabel }}" class="px-6 py-4 text-right text-sm font-bold text-gray-700 uppercase">IGV (18%)</td>
-                                            <td class="px-6 py-4 text-right text-sm font-bold text-gray-900 text-right">{{ number_format((float)$igvDeducido, 2) }}</td>
+                                            <td class="px-6 py-4 text-right text-sm font-bold text-gray-900 text-right">{{ $simboloMoneda }}{{ number_format((float)$igvDeducido, 2) }}</td>
                                         </tr>
                                         <tr class="bg-fenix-green/10 border-t-2 border-fenix-green">
                                             <td colspan="{{ $colSpanLabel }}" class="px-6 py-4 text-right text-base font-black text-gray-900 uppercase">Total Final</td>
-                                            <td class="px-6 py-4 text-right text-base font-black text-fenix-green text-right">{{ number_format((float)$sumatoriaSubtotal, 2) }}</td>
+                                            <td class="px-6 py-4 text-right text-base font-black text-fenix-green text-right">{{ $simboloMoneda }}{{ number_format((float)$sumatoriaSubtotal, 2) }}</td>
                                         </tr>
                                     </tfoot>
                                 @endunlessrole
