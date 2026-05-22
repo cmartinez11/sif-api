@@ -21,10 +21,11 @@ class Pedido extends Model
     }
 
     protected $casts = [
-        'cantidades_json' => 'array',
-        'cantidades_despachadas' => 'array',
-        'fecha_confirmacion' => 'datetime',
-        'fecha_entrega_confirmada' => 'date',
+        'cantidades_json'         => 'array',
+        'cantidades_despachadas'  => 'array',
+        'fecha_confirmacion'      => 'datetime',
+        'fecha_entrega_confirmada'=> 'date',
+        'estado_produccion'       => 'string',
     ];
 
     public const ESTADOS_ORDEN = [
@@ -32,11 +33,21 @@ class Pedido extends Model
         'En Revisión',
         'Ajustado por Logística',
         'Aprobado',
-        'Picking', // Even if picking is not a true DB state initially, sometimes companies use it. The prompt suggests Picking is a state. "si el pedido está en 'Picking'".
+        'Picking',
         'Despachado',
         'Entregado',
         'Anulado',
         'Cancelado por el cliente'
+    ];
+
+    /**
+     * Estados posibles del campo 'estado_produccion'.
+     * POR PRODUCIR → Pendiente de fabricación en planta.
+     * PRODUCIDO    → Material terminado, listo para despacho.
+     */
+    public const ESTADOS_PRODUCCION = [
+        'POR PRODUCIR',
+        'PRODUCIDO',
     ];
 
     public static function indiceEstado($estado)

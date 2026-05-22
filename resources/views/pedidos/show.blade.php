@@ -89,32 +89,52 @@
                             <p class="text-[10px] text-gray-500 mb-2">
                                 Estimada por ventas: <span class="font-bold">{{ $pedido->cotizacion->fecha_entrega_estimada ? \Carbon\Carbon::parse($pedido->cotizacion->fecha_entrega_estimada)->format('d/m/Y') : 'No asignada' }}</span>
                             </p>
-                            
-                            @if(!in_array($pedido->estado, ['Aprobado', 'Despachado', 'Entregado', 'Cancelado por el cliente', 'Cancelado']))
-                                <form action="{{ route('pedidos.confirmar_fecha', $pedido->numero ?? $pedido->id) }}" method="POST" class="space-y-3">
-                                    @csrf
-                                    <input type="date" name="fecha_entrega_confirmada" 
-                                        value="{{ old('fecha_entrega_confirmada', $pedido->fecha_entrega_confirmada ? $pedido->fecha_entrega_confirmada->format('Y-m-d') : ($pedido->cotizacion->fecha_entrega_estimada ? \Carbon\Carbon::parse($pedido->cotizacion->fecha_entrega_estimada)->format('Y-m-d') : '')) }}" 
-                                        class="w-full text-sm border-red-300 focus:ring-red-500 focus:border-red-500 rounded-md shadow-sm font-bold text-red-700">
-                                    
-                                    @hasanyrole('Logistico|Administrador|Supervisor')
+
+                            {{--
+                                El formulario de "CONFIRMAR FECHA" de esta cabecera se oculta para el
+                                rol Logístico. Ellos confirman la fecha directamente en el footer del
+                                form de ajuste de cantidades (junto al select Estado de Producción),
+                                evitando así el campo duplicado en su interfaz.
+                            --}}
+                            @hasanyrole('Vendedor|Administrador|Supervisor')
+                                @if(!in_array($pedido->estado, ['Aprobado', 'Despachado', 'Entregado', 'Cancelado por el cliente', 'Cancelado']))
+                                    <form action="{{ route('pedidos.confirmar_fecha', $pedido->numero ?? $pedido->id) }}" method="POST" class="space-y-3">
+                                        @csrf
+                                        <input type="date" name="fecha_entrega_confirmada"
+                                            value="{{ old('fecha_entrega_confirmada', $pedido->fecha_entrega_confirmada ? $pedido->fecha_entrega_confirmada->format('Y-m-d') : ($pedido->cotizacion->fecha_entrega_estimada ? \Carbon\Carbon::parse($pedido->cotizacion->fecha_entrega_estimada)->format('Y-m-d') : '')) }}"
+                                            class="w-full text-sm border-red-300 focus:ring-red-500 focus:border-red-500 rounded-md shadow-sm font-bold text-red-700">
+
                                         <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded text-xs transition duration-150 uppercase tracking-widest shadow-md">
                                             CONFIRMAR FECHA
                                         </button>
-                                    @endhasanyrole
-                                </form>
+                                    </form>
+                                @else
+                                    <div class="bg-white/50 border border-red-200 rounded-lg p-3 text-center">
+                                        <p class="text-[10px] text-gray-500 uppercase font-bold mb-1">Fecha de Despacho Confirmada</p>
+                                        <p class="text-lg font-black text-red-700">
+                                            @if(in_array($pedido->estado, ['Cancelado por el cliente', 'Cancelado']))
+                                                <span class="text-red-500">PEDIDO CANCELADO</span>
+                                            @else
+                                                {{ $pedido->fecha_entrega_confirmada ? $pedido->fecha_entrega_confirmada->format('d/m/Y') : 'Por definir' }}
+                                            @endif
+                                        </p>
+                                    </div>
+                                @endif
                             @else
+                                {{-- Para Logístico: muestra solo la fecha actual (solo lectura) --}}
                                 <div class="bg-white/50 border border-red-200 rounded-lg p-3 text-center">
-                                    <p class="text-[10px] text-gray-500 uppercase font-bold mb-1">Fecha de Despacho Confirmada</p>
+                                    <p class="text-[10px] text-gray-500 uppercase font-bold mb-1">Fecha de Despacho</p>
                                     <p class="text-lg font-black text-red-700">
-                                        @if(in_array($pedido->estado, ['Cancelado por el cliente', 'Cancelado']))
-                                            <span class="text-red-500">PEDIDO CANCELADO</span>
-                                        @else
-                                            {{ $pedido->fecha_entrega_confirmada ? $pedido->fecha_entrega_confirmada->format('d/m/Y') : 'Por definir' }}
-                                        @endif
+                                        {{ $pedido->fecha_entrega_confirmada ? $pedido->fecha_entrega_confirmada->format('d/m/Y') : 'Por confirmar' }}
                                     </p>
+                                    @if($pedido->estado_produccion)
+                                        <span class="mt-2 inline-block px-2 py-0.5 rounded-full text-xs font-bold
+                                            {{ $pedido->estado_produccion === 'PRODUCIDO' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700' }}">
+                                            {{ $pedido->estado_produccion }}
+                                        </span>
+                                    @endif
                                 </div>
-                            @endif
+                            @endhasanyrole
                         </div>
                     </div>
                 </div>
@@ -376,16 +396,41 @@
 
                         <div class="mt-10 flex flex-col md:flex-row justify-end items-center gap-4 p-6 bg-gray-50 rounded-b-lg border-t border-gray-200">
                             @if(auth()->user()->hasAnyRole(['Logistico', 'Supervisor', 'Administrador']) && in_array($pedido->estado, ['Pendiente', 'En Revisión']))
-                                <div class="flex items-center space-x-3 w-full md:w-auto mb-4 md:mb-0">
-                                    <label for="fecha_entrega_confirmada" class="text-sm font-bold text-gray-700 whitespace-nowrap">Fecha de Despacho *:</label>
+
+                                {{-- Fecha de Despacho --}}
+                                <div class="flex items-center space-x-2 w-full md:w-auto">
+                                    <label for="fecha_entrega_confirmada" class="text-sm font-bold text-gray-700 whitespace-nowrap">
+                                        Fecha de Despacho *:
+                                    </label>
                                     <input type="date" name="fecha_entrega_confirmada" id="fecha_entrega_confirmada"
-                                        value="{{ old('fecha_entrega_confirmada', $pedido->fecha_entrega_confirmada ? $pedido->fecha_entrega_confirmada->format('Y-m-d') : ($pedido->cotizacion->fecha_entrega_estimada ? \Carbon\Carbon::parse($pedido->cotizacion->fecha_entrega_estimada)->format('Y-m-d') : '')) }}" 
+                                        value="{{ old('fecha_entrega_confirmada', $pedido->fecha_entrega_confirmada ? $pedido->fecha_entrega_confirmada->format('Y-m-d') : ($pedido->cotizacion->fecha_entrega_estimada ? \Carbon\Carbon::parse($pedido->cotizacion->fecha_entrega_estimada)->format('Y-m-d') : '')) }}"
                                         class="text-sm border-gray-300 focus:ring-green-500 focus:border-green-500 rounded-md shadow-sm font-bold text-gray-700"
                                         required>
                                 </div>
-                                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transform transition hover:scale-105 duration-150">
+
+                                {{-- Estado de Producción --}}
+                                <div class="flex items-center space-x-2 w-full md:w-auto">
+                                    <label for="estado_produccion" class="text-sm font-bold text-gray-700 whitespace-nowrap">
+                                        Estado de Producción:
+                                    </label>
+                                    <select name="estado_produccion" id="estado_produccion"
+                                        class="text-sm border-gray-300 focus:ring-green-500 focus:border-green-500 rounded-md shadow-sm font-bold text-gray-700 bg-white">
+                                        <option value="">-- Sin especificar --</option>
+                                        @foreach(\App\Models\Pedido::ESTADOS_PRODUCCION as $ep)
+                                            <option value="{{ $ep }}"
+                                                {{ old('estado_produccion', $pedido->estado_produccion) === $ep ? 'selected' : '' }}>
+                                                {{ $ep }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                {{-- Botón Confirmar --}}
+                                <button type="submit"
+                                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transform transition hover:scale-105 duration-150">
                                     Confirmar / Guardar
                                 </button>
+
                             @endif
                         </div>
                     </form>

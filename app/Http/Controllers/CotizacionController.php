@@ -145,69 +145,84 @@ class CotizacionController extends Controller
             return redirect()->route('cotizaciones.index')
                 ->with('error', 'No se puede actualizar una cotización que ya ha sido cerrada o anulada.');
         }
+
         $request->validate([
-            'cliente_id' => 'required|exists:clientes,id',
-            'moneda' => 'required|in:soles,dolares',
-            'tipo_cambio' => 'nullable|numeric',
+            'cliente_id'                => 'required|exists:clientes,id',
+            'moneda'                    => 'required|in:soles,dolares',
+            'tipo_cambio'               => 'nullable|numeric',
             'condicion_pago_cotizacion' => 'required|string|in:CONTADO,7 DIAS,10 DIAS,15 DIAS,20 DIAS,30 DIAS,45 DIAS,60 DIAS,90 DIAS',
-            'itemsJson' => 'required',
-            'fecha_entrega_estimada' => 'nullable|date',
-            'vendedor_campo_id' => 'nullable|exists:users,id',
+            'itemsJson'                 => 'required',
+            'fecha_entrega_estimada'    => 'nullable|date',
+            'vendedor_campo_id'         => 'nullable|exists:users,id',
         ]);
 
-        $cotizacione->cliente_id = $request->cliente_id;
-        $cotizacione->condicion_pago = $request->input('condicion_pago_cotizacion');
-        $cotizacione->agencia = $request->agencia;
-        $cotizacione->direccion_agencia = $request->direccion_agencia;
-        $cotizacione->observaciones = $request->observaciones;
-        $cotizacione->moneda = $request->moneda;
-        $cotizacione->tipo_cambio = $request->tipo_cambio;
+        // Actualizar cabecera de la cotización.
+        // Las cotizaciones son propuestas comerciales: NO modifican el stock de productos.
+        $cotizacione->cliente_id             = $request->cliente_id;
+        $cotizacione->condicion_pago         = $request->input('condicion_pago_cotizacion');
+        $cotizacione->agencia                = $request->agencia;
+        $cotizacione->direccion_agencia      = $request->direccion_agencia;
+        $cotizacione->observaciones          = $request->observaciones;
+        $cotizacione->moneda                 = $request->moneda;
+        $cotizacione->tipo_cambio            = $request->tipo_cambio;
         $cotizacione->fecha_entrega_estimada = $request->fecha_entrega_estimada;
-        $cotizacione->vendedor_campo_id = $request->vendedor_campo_id;
-        $cotizacione->subtotal = $request->subtotal;
-        $cotizacione->igv = $request->igv;
-        $cotizacione->total = $request->total_final;
+        $cotizacione->vendedor_campo_id      = $request->vendedor_campo_id;
+        $cotizacione->subtotal               = $request->subtotal;
+        $cotizacione->igv                    = $request->igv;
+        $cotizacione->total                  = $request->total_final;
         $cotizacione->save();
 
-        // Regenerate items
+        // Regenerar ítems: borrar los anteriores y re-insertar los nuevos del formulario.
+        // El inventario (productos.stock) NO se toca aquí.
         $cotizacione->items()->delete();
         $items = json_decode($request->itemsJson, true);
-        foreach($items as $i) {
-            if(!empty($i['producto_id'])) {
-                $cotizacionItem = new CotizacionItem();
-                $cotizacionItem->cotizacion_id = $cotizacione->id;
-                $cotizacionItem->producto_id = $i['producto_id'];
-                $cotizacionItem->campos_json = json_encode($i);
-                $cotizacionItem->precio_unitario = $i['precio_unitario'] ?? 0;
-                $cotizacionItem->precio_total = $i['precio_total'] ?? 0;
-                $cotizacionItem->estado_item = $i['estado_item'] ?? 'Activo';
-                $cotizacionItem->motivo_rechazo = $i['motivo_rechazo'] ?? null;
-                $cotizacionItem->precio_competencia = !empty($i['precio_competencia']) ? $i['precio_competencia'] : null;
-                $cotizacionItem->save();
 
-                // Registrar competencia si el ítem fue rechazado
-                $pData = $i['perdida_data'] ?? null;
-                if ($cotizacionItem->estado_item === 'Rechazado' && (!empty($cotizacionItem->motivo_rechazo) || $pData)) {
-                    \App\Models\Competencia::updateOrCreate(
-                        [
-                            'cliente_id' => $cotizacione->cliente_id,
-                            'producto_id' => $cotizacionItem->producto_id,
-                            'proveedor_nombre' => $pData['proveedor_nombre'] ?? $cotizacionItem->motivo_rechazo ?? 'No especificado',
-                        ],
-                        [
-                            'precio_ofrecido' => (!empty($pData['precio_ofrecido']) ? $pData['precio_ofrecido'] : ($cotizacionItem->precio_competencia ?? 0)) ?: 0,
-                            'motivo_perdida' => $pData['motivo_perdida'] ?? '',
-                            'entrega_proveedor' => $pData['entrega_proveedor'] ?? '',
-                            'entrega_nuestra' => $pData['entrega_nuestra'] ?? '',
-                            'detalle_perdida' => $pData['detalle_perdida'] ?? '',
-                            'fecha_dato' => date('Y-m-d'),
-                        ]
-                    );
-                }
+        foreach ($items as $i) {
+            if (empty($i['producto_id'])) {
+                continue;
+            }
+
+            $cotizacionItem                     = new CotizacionItem();
+            $cotizacionItem->cotizacion_id      = $cotizacione->id;
+            $cotizacionItem->producto_id        = $i['producto_id'];
+            $cotizacionItem->campos_json        = json_encode($i);
+            $cotizacionItem->precio_unitario    = $i['precio_unitario']    ?? 0;
+            $cotizacionItem->precio_total       = $i['precio_total']       ?? 0;
+            $cotizacionItem->estado_item        = $i['estado_item']        ?? 'Activo';
+            $cotizacionItem->motivo_rechazo     = $i['motivo_rechazo']     ?? null;
+            $cotizacionItem->precio_competencia = !empty($i['precio_competencia'])
+                ? $i['precio_competencia']
+                : null;
+            $cotizacionItem->save();
+
+            // Registrar competencia si el ítem fue rechazado
+            $pData = $i['perdida_data'] ?? null;
+            if ($cotizacionItem->estado_item === 'Rechazado'
+                && (!empty($cotizacionItem->motivo_rechazo) || $pData)) {
+                \App\Models\Competencia::updateOrCreate(
+                    [
+                        'cliente_id'       => $cotizacione->cliente_id,
+                        'producto_id'      => $cotizacionItem->producto_id,
+                        'proveedor_nombre' => $pData['proveedor_nombre']
+                            ?? $cotizacionItem->motivo_rechazo
+                            ?? 'No especificado',
+                    ],
+                    [
+                        'precio_ofrecido'   => (!empty($pData['precio_ofrecido'])
+                            ? $pData['precio_ofrecido']
+                            : ($cotizacionItem->precio_competencia ?? 0)) ?: 0,
+                        'motivo_perdida'    => $pData['motivo_perdida']    ?? '',
+                        'entrega_proveedor' => $pData['entrega_proveedor'] ?? '',
+                        'entrega_nuestra'   => $pData['entrega_nuestra']   ?? '',
+                        'detalle_perdida'   => $pData['detalle_perdida']   ?? '',
+                        'fecha_dato'        => date('Y-m-d'),
+                    ]
+                );
             }
         }
 
-        return redirect()->route('cotizaciones.index')->with('success', 'Cotización actualizada exitosamente.');
+        return redirect()->route('cotizaciones.index')
+            ->with('success', 'Cotización actualizada exitosamente.');
     }
 
     public function destroy(Cotizacion $cotizacione)

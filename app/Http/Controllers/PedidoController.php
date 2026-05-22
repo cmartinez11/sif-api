@@ -191,9 +191,10 @@ class PedidoController extends Controller
         }
 
         $request->validate([
-            'items' => 'required|array',
+            'items'                    => 'required|array',
             'fecha_entrega_confirmada' => 'required|date',
-            'items.*.cantidad' => 'required|numeric|min:0',
+            'items.*.cantidad'         => 'required|numeric|min:0',
+            'estado_produccion'        => 'nullable|in:POR PRODUCIR,PRODUCIDO',
         ]);
 
         // Resolviendo la plantilla de forma segura (admite pedido directo)
@@ -390,13 +391,16 @@ class PedidoController extends Controller
 
             // 7. Actualizar parámetros del pedido original y aprobar
             $pedido->fecha_entrega_confirmada = $request->fecha_entrega_confirmada;
-            $pedido->estado = 'Aprobado';
-            $pedido->cantidades_despachadas = null;
+            $pedido->estado                   = 'Aprobado';
+            $pedido->cantidades_despachadas   = null;
+            $pedido->estado_produccion        = $request->estado_produccion ?? null;
             $pedido->save();
 
             // 8. Guardar cantidades_despachadas en el backorder si se creó
+            //    El backorder hereda el mismo estado_produccion (aun debe producirse el saldo)
             if ($nuevoPedidoSaldo) {
                 $nuevoPedidoSaldo->cantidades_despachadas = $saldosDespachosJson;
+                $nuevoPedidoSaldo->estado_produccion      = $request->estado_produccion ?? null;
                 $nuevoPedidoSaldo->save();
             }
 
