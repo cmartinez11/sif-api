@@ -60,6 +60,7 @@ class ReporteController extends Controller
                 'productos.linea',
                 'productos.unidad_medida_logistica',
                 'productos.stock',
+                'productos.deuda_arrastrada',
                 DB::raw('COALESCE(ventas.total_vendido, 0.000) as vendido_hoy')
             )
             ->orderBy('productos.codigo')
@@ -106,6 +107,7 @@ class ReporteController extends Controller
                 'productos.linea',
                 'productos.unidad_medida_logistica',
                 'productos.stock',
+                'productos.deuda_arrastrada',
                 DB::raw('COALESCE(ventas.total_vendido, 0.000) as vendido_hoy')
             )
             ->orderBy('productos.codigo')

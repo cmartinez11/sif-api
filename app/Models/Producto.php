@@ -11,8 +11,10 @@ class Producto extends Model
     protected $table = 'productos';
     protected $guarded = [];
 
-    protected $cast = [
+    protected $casts = [
         'stock' => 'decimal:3',
+        'deuda_arrastrada' => 'decimal:3',
+        'ultimo_stock_cargado_at' => 'date',
         'precio_base' => 'decimal:2',
         'peso' => 'decimal:3',
         'estado' => 'boolean',

@@ -15,12 +15,13 @@
                 items: {!! $productosReporte->map(function($p) {
                     $stockActual = (float)($p->stock ?? 0);
                     $vendidoHoy = (float)($p->vendido_hoy ?? 0);
+                    $deudaArrastrada = (float)($p->deuda_arrastrada ?? 0);
                     return [
                         'codigo' => $p->codigo,
                         'nombre' => $p->nombre, // Directo sin escapes duplicados para que Alpine lo lea correctamente
                         'linea' => $p->linea ?? 'N/A',
                         'unidad' => $p->unidad_medida_logistica ?? 'N/A',
-                        'subido' => $stockActual + $vendidoHoy, // Stock inicial estático (Saldo + Vendido)
+                        'subido' => $stockActual - $deudaArrastrada + $vendidoHoy, // Stock inicial cargado (Amortizado si hubo deuda)
                         'stock' => $stockActual,                // Saldo neto actual SIF
                         'vendido' => $vendidoHoy                // Cantidad vendida hoy
                     ];

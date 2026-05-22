@@ -101,30 +101,37 @@
     <table class="report-table">
         <thead>
             <tr>
-                <th width="12%">Código</th>
+                <th width="10%">Código</th>
                 <th>Producto</th>
-                <th width="15%">Línea</th>
-                <th width="8%" class="text-center">U/M</th>
-                <th width="15%" class="text-right">Vendido Hoy</th>
-                <th width="15%" class="text-right">Stock Remanente SIF</th>
+                <th width="12%">Línea</th>
+                <th width="6%" class="text-center">U/M</th>
+                <th width="14%" class="text-right">Subido Hoy</th>
+                <th width="14%" class="text-right">Vendido Hoy</th>
+                <th width="14%" class="text-right">Saldo SIF</th>
             </tr>
         </thead>
         <tbody>
             @forelse ($productosReporte as $producto)
                 @php
                     $stockVal = (float) $producto->stock;
-                    $isZeroStock = (number_format($stockVal, 3, '.', '') === '0.000');
+                    $vendidoHoy = (float) $producto->vendido_hoy;
+                    $deudaArrastrada = (float) ($producto->deuda_arrastrada ?? 0.000);
+                    $subidoHoy = $stockVal - $deudaArrastrada + $vendidoHoy;
+                    $isRuptura = ($stockVal <= 0.0);
                 @endphp
                 <tr>
                     <td class="font-bold">{{ $producto->codigo }}</td>
                     <td>{{ $producto->nombre }}</td>
                     <td>{{ $producto->linea ?? 'N/A' }}</td>
                     <td class="text-center">{{ $producto->unidad_medida_logistica ?? 'N/A' }}</td>
-                    <td class="text-right font-mono text-blue font-bold">
-                        {{ number_format((float) $producto->vendido_hoy, 3, '.', ',') }}
+                    <td class="text-right font-mono font-bold">
+                        {{ number_format($subidoHoy, 3, '.', ',') }}
                     </td>
-                    <td class="text-right font-mono font-bold {{ $isZeroStock ? 'bg-red-light text-red' : '' }}">
-                        @if ($isZeroStock)
+                    <td class="text-right font-mono text-blue font-bold">
+                        {{ number_format($vendidoHoy, 3, '.', ',') }}
+                    </td>
+                    <td class="text-right font-mono font-bold {{ $isRuptura ? 'bg-red-light text-red' : '' }}">
+                        @if ($isRuptura)
                             [RUPTURA] 
                         @endif
                         {{ number_format($stockVal, 3, '.', ',') }}
@@ -132,7 +139,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" class="text-center" style="padding: 20px;">
+                    <td colspan="7" class="text-center" style="padding: 20px;">
                         No se encontraron registros de stock diario en el sistema.
                     </td>
                 </tr>

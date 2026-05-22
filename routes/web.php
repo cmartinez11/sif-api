@@ -21,6 +21,9 @@ Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'inde
 
 Route::middleware('auth')->group(function () {
     Route::get('contactos/search', [App\Http\Controllers\ContactoController::class, 'search'])->name('contactos.search');
+    Route::get('/dashboard/supervisor/vendedora-productos', [App\Http\Controllers\DashboardController::class, 'getVendedoraProductos'])
+        ->middleware('role:Administrador|Supervisor')
+        ->name('dashboard.supervisor.vendedora_productos');
     Route::resource('contactos', App\Http\Controllers\ContactoController::class);
     Route::resource('clientes', App\Http\Controllers\ClienteController::class);
     

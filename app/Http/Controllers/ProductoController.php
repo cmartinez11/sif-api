@@ -150,15 +150,42 @@ class ProductoController extends Controller
                 // El casteo a float ahora mantendrá los 3 decimales exactos en la base de datos modificada
                 $stockActual = (float)$stockActualRaw;
 
-                $updated = DB::table('productos')
+                // Buscar el producto en la BD para ver su estado actual de stock y amortización
+                $producto = DB::table('productos')
                     ->where('codigo', $codigo)
-                    ->update([
-                        'stock' => $stockActual,
-                        'updated_at' => now(),
-                    ]);
+                    ->select('id', 'stock', 'deuda_arrastrada', 'ultimo_stock_cargado_at')
+                    ->first();
 
-                if ($updated) {
-                    $updatedCount++;
+                if ($producto) {
+                    $hoy = date('Y-m-d');
+                    $deuda = (float)($producto->deuda_arrastrada ?? 0.000);
+                    $ultimoCargadoAt = $producto->ultimo_stock_cargado_at;
+
+                    // Si la última carga no fue hoy, evaluamos la deuda arrastrada desde el stock actual
+                    if (empty($ultimoCargadoAt) || $ultimoCargadoAt !== $hoy) {
+                        $stockAnterior = (float)($producto->stock ?? 0.000);
+                        if ($stockAnterior < 0.0) {
+                            $deuda = $stockAnterior; // Guardamos el stock negativo como deuda
+                        } else {
+                            $deuda = 0.000;
+                        }
+                    }
+
+                    // Calculamos el nuevo stock neto: nueva carga (subido) + deuda arrastrada (negativa)
+                    $nuevoStock = (float)round($stockActual + $deuda, 3);
+
+                    $updated = DB::table('productos')
+                        ->where('id', $producto->id)
+                        ->update([
+                            'stock' => $nuevoStock,
+                            'deuda_arrastrada' => $deuda,
+                            'ultimo_stock_cargado_at' => $hoy,
+                            'updated_at' => now(),
+                        ]);
+
+                    if ($updated) {
+                        $updatedCount++;
+                    }
                 }
             }
 
