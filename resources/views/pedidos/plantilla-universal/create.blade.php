@@ -291,13 +291,15 @@
                                     <thead class="bg-gray-50 text-gray-600 border-b border-gray-150 text-xs font-bold uppercase tracking-wider">
                                         <tr>
                                             <th class="px-4 py-3">Vendedora</th>
+                                            <th class="px-4 py-3 text-center">Pedido N°</th>
                                             <th class="px-4 py-3 text-right">Cantidad Vendida Hoy</th>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-100 bg-white">
-                                        <template x-for="venta in modalStockProduct.ventas_hoy" :key="venta.vendedora">
+                                        <template x-for="venta in modalStockProduct.ventas_hoy" :key="venta.pedido">
                                             <tr class="hover:bg-gray-50 transition duration-150">
                                                 <td class="px-4 py-3 font-semibold text-gray-800" x-text="venta.vendedora"></td>
+                                                <td class="px-4 py-3 text-center font-mono text-gray-600" x-text="venta.pedido"></td>
                                                 <td class="px-4 py-3 text-right font-mono text-gray-900 font-bold" x-text="venta.cantidad"></td>
                                             </tr>
                                         </template>

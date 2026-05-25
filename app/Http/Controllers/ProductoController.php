@@ -224,14 +224,14 @@ class ProductoController extends Controller
      */
     public function monitoreoStock($id)
     {
-        $producto = DB::table('productos')->select('stock')->where('id', $id)->first();
+        $producto = DB::table('productos')->select('codigo', 'nombre', 'stock')->where('id', $id)->first();
         if (!$producto) {
             return response()->json(['error' => 'Producto no encontrado.'], 404);
         }
 
         $stock = number_format((float) $producto->stock, 3, '.', '');
 
-        // Obtener ventas del día de hoy agrupadas por vendedora
+        // Obtener ventas del día de hoy agrupadas por vendedora y pedido
         $ventasHoy = DB::table('pedido_items')
             ->join('pedidos', 'pedido_items.pedido_id', '=', 'pedidos.id')
             ->join('users', 'pedidos.user_id', '=', 'users.id')
@@ -240,6 +240,7 @@ class ProductoController extends Controller
             ->whereNotIn('pedidos.estado', ['Anulado', 'Cancelado por el cliente', 'Rechazado'])
             ->select(
                 'users.name as vendedora',
+                'pedidos.numero as numero_pedido',
                 DB::raw("SUM(COALESCE(
                     CAST(NULLIF(pedido_items.campos_json::jsonb->>'total_kilos', '') AS NUMERIC),
                     CAST(NULLIF(pedido_items.campos_json::jsonb->>'total_millares', '') AS NUMERIC),
@@ -249,18 +250,21 @@ class ProductoController extends Controller
                     0
                 )) as cantidad_vendida")
             )
-            ->groupBy('users.name')
-            ->orderBy('users.name')
+            ->groupBy('users.name', 'pedidos.numero')
+            ->orderBy('pedidos.numero')
             ->get();
 
         $ventasAgrupadas = $ventasHoy->map(function ($venta) {
             return [
                 'vendedora' => $venta->vendedora,
+                'pedido' => $venta->numero_pedido,
                 'cantidad' => number_format((float) $venta->cantidad_vendida, 3, '.', '')
             ];
         });
 
         return response()->json([
+            'codigo' => $producto->codigo,
+            'nombre' => $producto->nombre,
             'stock' => $stock,
             'ventas_hoy' => $ventasAgrupadas
         ]);
