@@ -41,8 +41,19 @@ class DashboardController extends Controller
                                              ->take(10)
                                              ->get();
 
+            // Pedidos en cola de producción (estado_produccion = POR PRODUCIR)
+            $pedidosPorProducir = Pedido::where('estado_produccion', 'POR PRODUCIR')
+                ->whereNotIn('estado', ['Anulado', 'Cancelado por el cliente'])
+                ->count();
+
+            // Alertas de ruptura (saldos negativos en stock en el SIF)
+            $alertasRuptura = \App\Models\Producto::where('stock', '<', 0)
+                ->orderBy('stock', 'asc') // Mayor deuda primero (más negativo)
+                ->take(3)
+                ->get();
+
             return view('dashboard.logistica', compact(
-                'despachosHoy', 'pendientesPicking', 'backordersEspera', 'entregadosSemana', 'agendaDespachos'
+                'despachosHoy', 'pendientesPicking', 'backordersEspera', 'entregadosSemana', 'agendaDespachos', 'pedidosPorProducir', 'alertasRuptura'
             ));
         }
 

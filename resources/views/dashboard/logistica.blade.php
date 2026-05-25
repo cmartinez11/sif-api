@@ -19,7 +19,7 @@
             </div>
 
             <!-- KPI Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 <!-- Para Despachar Hoy -->
                 <div class="bg-white rounded-xl shadow-lg overflow-hidden border-l-4 border-blue-500 hover:shadow-xl transition-shadow">
                     <div class="px-6 py-5">
@@ -53,6 +53,43 @@
                         <p class="text-green-500 text-xs font-bold uppercase tracking-wider">Entregados Semana</p>
                         <h4 class="text-4xl font-black text-gray-800 mt-2">{{ $entregadosSemana }}</h4>
                         <p class="text-gray-400 text-[10px] mt-1 italic">* Pedidos finalizados en la semana actual</p>
+                    </div>
+                </div>
+
+                <!-- CARD 5: Cola de Producción (Replicated from Supervisor) -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-150 p-6 flex flex-col justify-between hover:shadow-md transition">
+                    <div class="flex justify-between items-start">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Cola de Producción</p>
+                        <span class="p-2.5 rounded-xl bg-amber-50 text-amber-600">🏭</span>
+                    </div>
+                    <div class="mt-4">
+                        <h3 class="text-3xl font-extrabold text-slate-800 leading-none">
+                            {{ $pedidosPorProducir }}
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-2">Pedidos pendientes por fabricar</p>
+                    </div>
+                </div>
+
+                <!-- CARD 6: Alertas de Ruptura (Replicated from Supervisor) -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-150 p-6 flex flex-col justify-between hover:shadow-md transition">
+                    <div class="flex justify-between items-start">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Alertas de Ruptura</p>
+                        <span class="p-2.5 rounded-xl bg-red-50 text-rose-600">⚠️</span>
+                    </div>
+                    <div class="mt-4">
+                        @if($alertasRuptura->isNotEmpty())
+                            <div class="space-y-1">
+                                @foreach($alertasRuptura as $ruptura)
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="font-semibold text-slate-600 truncate max-w-[100px]">{{ $ruptura->codigo }}</span>
+                                        <span class="font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">{{ number_format($ruptura->stock, 2) }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <h3 class="text-lg font-bold text-emerald-600">Sin alertas</h3>
+                            <p class="text-xs text-slate-500 mt-1">Todos los stocks están al día</p>
+                        @endif
                     </div>
                 </div>
             </div>
