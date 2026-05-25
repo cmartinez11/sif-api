@@ -27,6 +27,24 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        // Registrar el observer de Pedido
+        \App\Models\Pedido::observe(\App\Observers\PedidoObserver::class);
+
+        // Registrar hook para capturar cambios de cantidad en items de pedido
+        \App\Models\PedidoItem::updating(function ($item) {
+            $oldQty = \App\Observers\PedidoObserver::getQtyFromCampos($item->getOriginal('campos_json'));
+            $newQty = \App\Observers\PedidoObserver::getQtyFromCampos($item->campos_json);
+
+            if ($oldQty != $newQty) {
+                $producto = $item->producto;
+                $productoNombre = $producto ? $producto->nombre : 'Producto #' . $item->producto_id;
+
+                \App\Observers\PedidoObserver::$itemChanges[$item->pedido_id][] = [
+                    'producto' => $productoNombre,
+                    'old_qty'  => $oldQty,
+                    'new_qty'  => $newQty,
+                ];
+            }
+        });
     }
 }
