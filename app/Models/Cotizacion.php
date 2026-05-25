@@ -13,7 +13,24 @@ class Cotizacion extends Model
 {
     use HasFactory;
     protected $table = 'cotizaciones';
-    protected $guarded = [];
+
+    protected $fillable = [
+        'numero',
+        'vendedor_id',
+        'cliente_id',
+        'plantilla_id',
+        'moneda',
+        'estado',
+        'fecha_emision',
+        'fecha_entrega_estimada',
+        'vendedor_campo_id',
+        'agencia',
+        'direccion_agencia',
+        'observaciones',
+        'subtotal',
+        'igv',
+        'total',
+    ];
 
     protected $casts = [
         'fecha_entrega_estimada' => 'date',
