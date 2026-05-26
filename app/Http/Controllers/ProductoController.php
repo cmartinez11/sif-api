@@ -75,7 +75,7 @@ class ProductoController extends Controller
 
     public function update(Request $request, Producto $producto)
     {
-        $validated = $request->validate([
+        $rules = [
             'nombre' => 'required|string|max:255',
             'unidad_medida' => 'nullable|string|max:255',
             'precio_base' => 'required|numeric|min:0',
@@ -84,9 +84,54 @@ class ProductoController extends Controller
             'estado' => 'required|boolean',
             'peso' => 'nullable|numeric|min:0',
             'unidad_medida_logistica' => 'nullable|string|max:255',
-        ]);
+        ];
+
+        $isAuthorized = auth()->user() && auth()->user()->hasAnyRole(['Supervisor', 'Administrador']);
+
+        if ($isAuthorized) {
+            $rules['stock'] = 'nullable|numeric|min:0';
+        }
+
+        $validated = $request->validate($rules);
+
+        $oldStock = (float)$producto->stock;
+        $newStock = $isAuthorized && $request->has('stock')
+            ? ($request->stock !== null && $request->stock !== '' ? (float)$request->stock : 0.0)
+            : $oldStock;
+
+        if ($isAuthorized && $request->has('stock')) {
+            $validated['stock'] = $newStock;
+        }
 
         $producto->update($validated);
+
+        if ($isAuthorized && $oldStock !== $newStock) {
+            $ipAddress = null;
+            if (!app()->runningInConsole()) {
+                try {
+                    $ipAddress = request() ? request()->ip() : null;
+                } catch (\Exception $e) {
+                    $ipAddress = null;
+                }
+            }
+
+            $userName = auth()->user() ? auth()->user()->name : 'Supervisor';
+            \App\Models\Log::create([
+                'user_id' => auth()->id(),
+                'accion' => 'MODIFICAR',
+                'modulo' => 'Productos',
+                'registro_id' => $producto->id,
+                'descripcion' => "El usuario {$userName} modificó el stock del producto {$producto->nombre} (de {$oldStock} a {$newStock}).",
+                'historial_json' => [
+                    'stock' => [
+                        'antes' => $oldStock,
+                        'despues' => $newStock,
+                    ]
+                ],
+                'ip_address' => $ipAddress,
+            ]);
+        }
+
         return redirect()->route('productos.index')->with('success', 'Producto actualizado exitosamente.');
     }
 

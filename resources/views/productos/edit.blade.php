@@ -85,6 +85,15 @@
                             </select>
                             @error('estado') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
+
+                        @hasanyrole('Supervisor|Administrador')
+                        <!-- Stock -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Stock</label>
+                            <input type="number" step="0.001" name="stock" value="{{ old('stock', $producto->stock) }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-fenix-green focus:ring focus:ring-fenix-green focus:ring-opacity-50">
+                            @error('stock') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        </div>
+                        @endhasanyrole
                     </div>
                     <div class="mt-6 flex justify-end">
                         <a href="{{ route('productos.index') }}" class="mr-3 text-gray-600 hover:text-gray-900 py-2">Cancelar</a>
