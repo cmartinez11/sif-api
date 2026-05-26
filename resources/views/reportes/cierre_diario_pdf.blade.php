@@ -118,7 +118,8 @@
                     $deudaArrastrada = (float) ($producto->deuda_arrastrada ?? 0.000);
                     $subidoHoy = $stockActual - $deudaArrastrada + $vendidoHoy;
                     $comprometido = (float) ($producto->stock_comprometido ?? 0.000);
-                    $saldoSif = $stockActual - $comprometido;
+                    $vendidoHoyFuturo = (float) ($producto->vendido_hoy_futuro ?? 0.000);
+                    $saldoSif = $stockActual - $comprometido + $vendidoHoyFuturo;
                     $isRuptura = ($saldoSif <= 0.0);
                 @endphp
                 <tr>
