@@ -16,13 +16,15 @@
                     $stockActual = (float)($p->stock ?? 0);
                     $vendidoHoy = (float)($p->vendido_hoy ?? 0);
                     $deudaArrastrada = (float)($p->deuda_arrastrada ?? 0);
+                    $comprometido = (float)($p->stock_comprometido ?? 0);
+                    $saldoSif = $stockActual - $comprometido;
                     return [
                         'codigo' => $p->codigo,
                         'nombre' => $p->nombre, // Directo sin escapes duplicados para que Alpine lo lea correctamente
                         'linea' => $p->linea ?? 'N/A',
                         'unidad' => $p->unidad_medida_logistica ?? 'N/A',
                         'subido' => $stockActual - $deudaArrastrada + $vendidoHoy, // Stock inicial cargado (Amortizado si hubo deuda)
-                        'stock' => $stockActual,                // Saldo neto actual SIF
+                        'stock' => $saldoSif,                // Saldo neto actual SIF
                         'vendido' => $vendidoHoy                // Cantidad vendida hoy
                     ];
                 })->toJson() !!},

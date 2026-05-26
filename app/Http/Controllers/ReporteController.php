@@ -49,10 +49,33 @@ class ReporteController extends Controller
             )
             ->groupBy('pedido_items.producto_id');
 
-        // Cruzar productos con las ventas sumadas del día
+        // 1. CALCULAR EL STOCK COMPROMETIDO FUTURO (FechaDespacho >= Hoy + 2 días, Aprobado)
+        $fechaLimite = now()->addDays(2)->toDateString();
+        $stockComprometidoSub = DB::table('pedido_items')
+            ->join('pedidos', 'pedido_items.pedido_id', '=', 'pedidos.id')
+            ->where('pedidos.estado', 'Aprobado')
+            ->whereDate('pedidos.fecha_entrega_confirmada', '>=', $fechaLimite)
+            ->select(
+                'pedido_items.producto_id',
+                DB::raw("SUM(COALESCE(
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'total_kilos', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'total_millares', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'cantidad', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'fardo', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'cantidad_fardos', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'cantidad_millar', '') AS NUMERIC),
+                    0
+                )) as total_comprometido")
+            )
+            ->groupBy('pedido_items.producto_id');
+
+        // Cruzar productos con las ventas sumadas del día y el stock comprometido
         $productosReporte = DB::table('productos')
             ->leftJoinSub($ventasHoySub, 'ventas', function ($join) {
                 $join->on('productos.id', '=', 'ventas.producto_id');
+            })
+            ->leftJoinSub($stockComprometidoSub, 'comprometido', function ($join) {
+                $join->on('productos.id', '=', 'comprometido.producto_id');
             })
             ->select(
                 'productos.codigo',
@@ -61,7 +84,8 @@ class ReporteController extends Controller
                 'productos.unidad_medida_logistica',
                 'productos.stock',
                 'productos.deuda_arrastrada',
-                DB::raw('COALESCE(ventas.total_vendido, 0.000) as vendido_hoy')
+                DB::raw('COALESCE(ventas.total_vendido, 0.000) as vendido_hoy'),
+                DB::raw('COALESCE(comprometido.total_comprometido, 0.000) as stock_comprometido')
             )
             ->orderBy('productos.codigo')
             ->get();
@@ -97,9 +121,32 @@ class ReporteController extends Controller
             )
             ->groupBy('pedido_items.producto_id');
 
+        // Calcular el stock comprometido futuro
+        $fechaLimite = now()->addDays(2)->toDateString();
+        $stockComprometidoSub = DB::table('pedido_items')
+            ->join('pedidos', 'pedido_items.pedido_id', '=', 'pedidos.id')
+            ->where('pedidos.estado', 'Aprobado')
+            ->whereDate('pedidos.fecha_entrega_confirmada', '>=', $fechaLimite)
+            ->select(
+                'pedido_items.producto_id',
+                DB::raw("SUM(COALESCE(
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'total_kilos', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'total_millares', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'cantidad', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'fardo', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'cantidad_fardos', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'cantidad_millar', '') AS NUMERIC),
+                    0
+                )) as total_comprometido")
+            )
+            ->groupBy('pedido_items.producto_id');
+
         $productosReporte = DB::table('productos')
             ->leftJoinSub($ventasHoySub, 'ventas', function ($join) {
                 $join->on('productos.id', '=', 'ventas.producto_id');
+            })
+            ->leftJoinSub($stockComprometidoSub, 'comprometido', function ($join) {
+                $join->on('productos.id', '=', 'comprometido.producto_id');
             })
             ->select(
                 'productos.codigo',
@@ -108,7 +155,8 @@ class ReporteController extends Controller
                 'productos.unidad_medida_logistica',
                 'productos.stock',
                 'productos.deuda_arrastrada',
-                DB::raw('COALESCE(ventas.total_vendido, 0.000) as vendido_hoy')
+                DB::raw('COALESCE(ventas.total_vendido, 0.000) as vendido_hoy'),
+                DB::raw('COALESCE(comprometido.total_comprometido, 0.000) as stock_comprometido')
             )
             ->orderBy('productos.codigo')
             ->get();

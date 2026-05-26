@@ -113,11 +113,13 @@
         <tbody>
             @forelse ($productosReporte as $producto)
                 @php
-                    $stockVal = (float) $producto->stock;
+                    $stockActual = (float) $producto->stock;
                     $vendidoHoy = (float) $producto->vendido_hoy;
                     $deudaArrastrada = (float) ($producto->deuda_arrastrada ?? 0.000);
-                    $subidoHoy = $stockVal - $deudaArrastrada + $vendidoHoy;
-                    $isRuptura = ($stockVal <= 0.0);
+                    $subidoHoy = $stockActual - $deudaArrastrada + $vendidoHoy;
+                    $comprometido = (float) ($producto->stock_comprometido ?? 0.000);
+                    $saldoSif = $stockActual - $comprometido;
+                    $isRuptura = ($saldoSif <= 0.0);
                 @endphp
                 <tr>
                     <td class="font-bold">{{ $producto->codigo }}</td>
@@ -134,7 +136,7 @@
                         @if ($isRuptura)
                             [RUPTURA] 
                         @endif
-                        {{ number_format($stockVal, 3, '.', ',') }}
+                        {{ number_format($saldoSif, 3, '.', ',') }}
                     </td>
                 </tr>
             @empty
