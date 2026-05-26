@@ -51,7 +51,7 @@
                                         </div>
                                     </div>
                                     
-                                    <button type="submit" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-5 rounded-lg shadow-md transition ease-in-out duration-150 uppercase tracking-wider">
+                                    <button type="submit" class="w-full sm:w-auto bg-blue-500 hover:bg-blue-700 text-white text-xs font-bold py-2 px-5 rounded-lg shadow-md transition ease-in-out duration-150 uppercase tracking-wider">
                                         Sincronizar Stock
                                     </button>
                                 </form>

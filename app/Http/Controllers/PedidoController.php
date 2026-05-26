@@ -585,10 +585,59 @@ class PedidoController extends Controller
         try {
             DB::beginTransaction();
 
-            $cotizacion = $pedido->cotizacion;
-            if ($cotizacion) {
-                $cotizacion->estado = 'Borrador';
-                $cotizacion->save();
+            // 1. DEVOLVER EL STOCK EN EL RETROCESO
+            foreach ($pedido->items as $item) {
+                $producto = \App\Models\Producto::find($item->producto_id);
+                if ($producto) {
+                    $campos = json_decode($item->campos_json, true) ?: [];
+                    $cantidad = 0.0;
+                    if (isset($campos['total_kilos']) && $campos['total_kilos'] !== '') {
+                        $cantidad = (float) $campos['total_kilos'];
+                    } elseif (isset($campos['total_millares']) && $campos['total_millares'] !== '') {
+                        $cantidad = (float) $campos['total_millares'];
+                    } elseif (isset($campos['cantidad']) && $campos['cantidad'] !== '') {
+                        $cantidad = (float) $campos['cantidad'];
+                    } elseif (isset($campos['fardo']) && $campos['fardo'] !== '') {
+                        $cantidad = (float) $campos['fardo'];
+                    } elseif (isset($campos['cantidad_fardos']) && $campos['cantidad_fardos'] !== '') {
+                        $cantidad = (float) $campos['cantidad_fardos'];
+                    } elseif (isset($campos['cantidad_millar']) && $campos['cantidad_millar'] !== '') {
+                        $cantidad = (float) $campos['cantidad_millar'];
+                    }
+
+                    if ($cantidad > 0.0) {
+                        $producto->increment('stock', $cantidad);
+                    }
+                }
+            }
+
+            // 2. GENERAR LOG DE AUDITORÍA
+            $ipAddress = null;
+            if (!app()->runningInConsole()) {
+                try {
+                    $ipAddress = request() ? request()->ip() : null;
+                } catch (\Exception $e) {
+                    $ipAddress = null;
+                }
+            }
+
+            $userName = auth()->user() ? auth()->user()->name : 'Supervisor';
+            \App\Models\Log::create([
+                'user_id' => auth()->id(),
+                'accion' => 'RETROCEDER',
+                'modulo' => 'Pedidos',
+                'registro_id' => $pedido->id,
+                'descripcion' => "El Supervisor {$userName} retrocedió el Pedido N° {$pedido->numero} a Cotización. Se restituyeron las cantidades al inventario.",
+                'ip_address' => $ipAddress,
+            ]);
+
+            // 3. ACTUALIZAR ESTADO DE LA COTIZACIÓN
+            if ($pedido->cotizacion_id) {
+                $cotizacion = $pedido->cotizacion;
+                if ($cotizacion) {
+                    $cotizacion->estado = 'Borrador';
+                    $cotizacion->save();
+                }
             }
 
             $pedido->delete();
