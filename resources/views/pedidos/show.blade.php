@@ -165,7 +165,7 @@
                                                 </th>
                                             @endunlessrole
                                         @elseif($pedido->cotizacion->plantilla->nombre == 'Bolsas de Polipropileno por kilos')
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cant. de Fardos</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cant. de Kilos</th>
                                             @unlessrole('Logistico')
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">U/M</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Kilos</th>
@@ -246,7 +246,7 @@
                                             if (in_array($nombrePlantilla, ['Tratadas', 'Bolsas de Polipropileno', 'Pets'])) {
                                                 $cantidadOriginal = (float) ($campos['fardo'] ?? 0);
                                             } elseif ($nombrePlantilla === 'Bolsas de Polipropileno por kilos') {
-                                                $cantidadOriginal = (float) ($campos['cantidad_fardos'] ?? 0);
+                                                $cantidadOriginal = (float) ($campos['total_kilos'] ?? 0);
                                             } else {
                                                 $cantidadOriginal = (float) ($campos['cantidad'] ?? 0);
                                             }
@@ -255,6 +255,9 @@
                                             $huboCambio = $tieneAjuste && ($ajusteQty !== null) && ($cantidadFinal != $cantidadOriginal);
                                             
                                             $unidadVisual = $item->unidad_medida ?? ($item->producto->unidad_medida ?? '');
+                                            if ($nombrePlantilla === 'Bolsas de Polipropileno por kilos') {
+                                                $unidadVisual = 'KG';
+                                            }
 
                                             // 4. RECÁLCULO MATEMÁTICO
                                             $precioTotalFila = $item->precio_total; 
@@ -263,11 +266,7 @@
                                                 $totalDerivado = $cantidadFinal * $cantidadPorMillar; 
                                                 $precioTotalFila = $totalDerivado * (float)$item->precio_unitario;
                                             } elseif ($nombrePlantilla === 'Bolsas de Polipropileno por kilos') {
-                                                $fardosOriginalesCalc = $cantidadOriginal > 0 ? $cantidadOriginal : 1;
-                                                $kilosOriginales = (float)($campos['total_kilos'] ?? 0);
-                                                $pesoPromedio = $kilosOriginales / $fardosOriginalesCalc;
-                                                $totalDerivado = $cantidadFinal * $pesoPromedio;
-                                                $precioTotalFila = $totalDerivado * (float)$item->precio_unitario;
+                                                $precioTotalFila = $cantidadFinal * (float)$item->precio_unitario;
                                             } elseif ($nombrePlantilla === 'Universal') {
                                                 $precioTotalFila = $cantidadFinal * (float)$item->precio_unitario;
                                             }
@@ -327,7 +326,7 @@
                                                         {{ $campos['unidad_medida'] ?? 'Kilos' }}
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-center">
-                                                        {{ number_format((float)($cantidadFinal * ($cantidadOriginal > 0 ? ((float)($campos['total_kilos'] ?? 0) / $cantidadOriginal) : 0)), 2) }}
+                                                        {{ number_format((float)$cantidadFinal, 2) }}
                                                     </td>
                                                 @else
                                                     <td colspan="2" class="px-6 py-4 text-center text-gray-400 bg-gray-50 text-xs italic">Oculto</td>

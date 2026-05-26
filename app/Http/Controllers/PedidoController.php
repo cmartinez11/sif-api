@@ -252,7 +252,7 @@ class PedidoController extends Controller
                 if (in_array($plantilla, ['Tratadas', 'Bolsas de Polipropileno', 'Pets'])) {
                     $originalQty = (float) ($campos['fardo'] ?? 0);
                 } elseif ($plantilla === 'Bolsas de Polipropileno por kilos') {
-                    $originalQty = (float) ($campos['cantidad_fardos'] ?? 0);
+                    $originalQty = (float) ($campos['total_kilos'] ?? 0); // Kilos as visual quantity
                 } else {
                     $originalQty = (float) ($campos['cantidad'] ?? 0);
                 }
@@ -293,11 +293,11 @@ class PedidoController extends Controller
                     $originalKilos = (float)($campos['total_kilos'] ?? 0.0);
                     $pesoPromedio = $originalKilos / $originalFardos;
 
-                    $newTotalKilos = $newQtyLogistica * $pesoPromedio;
+                    $newTotalKilos = $newQtyLogistica; // Direct Kilos
                     $newPhysicalQty = $newTotalKilos;
 
-                    $campos['cantidad_fardos'] = $newQtyLogistica;
                     $campos['total_kilos'] = $newTotalKilos;
+                    $campos['cantidad_fardos'] = $pesoPromedio > 0 ? (float)round($newTotalKilos / $pesoPromedio, 2) : 0.0;
                 } else {
                     $newPhysicalQty = $newQtyLogistica;
                     $campos['cantidad'] = $newQtyLogistica;
@@ -355,11 +355,13 @@ class PedidoController extends Controller
                     } elseif (in_array($plantilla, ['Bolsas de Polipropileno', 'Bolsas de Polipropileno por kilos'])) {
                         if ($plantilla === 'Bolsas de Polipropileno') {
                             $camposNuevos['fardo'] = $saldoQty;
+                            $camposNuevos['total_kilos'] = $saldoQty * $pesoPromedio;
+                            $physicalSaldo = $camposNuevos['total_kilos'];
                         } else {
-                            $camposNuevos['cantidad_fardos'] = $saldoQty;
+                            $camposNuevos['total_kilos'] = $saldoQty;
+                            $camposNuevos['cantidad_fardos'] = $pesoPromedio > 0 ? (float)round($saldoQty / $pesoPromedio, 2) : 0.0;
+                            $physicalSaldo = $camposNuevos['total_kilos'];
                         }
-                        $camposNuevos['total_kilos'] = $saldoQty * $pesoPromedio;
-                        $physicalSaldo = $camposNuevos['total_kilos'];
                     } else {
                         $camposNuevos['cantidad'] = $saldoQty;
                         $physicalSaldo = $saldoQty;
