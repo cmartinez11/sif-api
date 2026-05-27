@@ -107,7 +107,7 @@
                 <th width="6%" class="text-center">U/M</th>
                 <th width="14%" class="text-right">Subido Hoy</th>
                 <th width="14%" class="text-right">Vendido Hoy</th>
-                <th width="14%" class="text-right">Saldo SIF</th>
+                <th width="14%" class="text-right">Saldo</th>
             </tr>
         </thead>
         <tbody>
@@ -119,7 +119,7 @@
                     $subidoHoy = $stockActual - $deudaArrastrada + $vendidoHoy;
                     $comprometido = (float) ($producto->stock_comprometido ?? 0.000);
                     $vendidoHoyFuturo = (float) ($producto->vendido_hoy_futuro ?? 0.000);
-                    $saldoSif = $stockActual - $comprometido + $vendidoHoyFuturo;
+                    $saldoSif = ($stockActual - $deudaArrastrada) - $comprometido + $vendidoHoyFuturo;
                     $isRuptura = ($saldoSif <= 0.0);
                 @endphp
                 <tr>

@@ -338,8 +338,8 @@ class ReporteController extends Controller
             ->first();
         $vendidoHoyFuturo = (float)($ventaHoyFuturoSumObj->total_vendido_futuro ?? 0);
 
-        // Saldo SIF (Disponible) = stock - total_comprometido + vendidoHoyFuturo
-        $saldoSif = (float)$producto->stock - $totalComprometido + $vendidoHoyFuturo;
+        // Saldo SIF (Disponible) = (stock - deuda_arrastrada) - total_comprometido + vendidoHoyFuturo
+        $saldoSif = ((float)$producto->stock - (float)($producto->deuda_arrastrada ?? 0.000)) - $totalComprometido + $vendidoHoyFuturo;
 
         return response()->json([
             'producto' => [

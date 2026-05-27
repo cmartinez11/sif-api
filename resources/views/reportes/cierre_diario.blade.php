@@ -21,7 +21,7 @@
                     $deudaArrastrada = (float)($p->deuda_arrastrada ?? 0);
                     $comprometido = (float)($p->stock_comprometido ?? 0);
                     $vendidoHoyFuturo = (float)($p->vendido_hoy_futuro ?? 0);
-                    $saldoSif = $stockActual - $comprometido + $vendidoHoyFuturo;
+                    $saldoSif = ($stockActual - $deudaArrastrada) - $comprometido + $vendidoHoyFuturo;
                     return [
                         'codigo' => $p->codigo,
                         'nombre' => $p->nombre, // Directo sin escapes duplicados para que Alpine lo lea correctamente
@@ -470,11 +470,10 @@
                         <div class="bg-blue-50/50 border border-blue-100 rounded-xl p-4 text-xs text-blue-800 space-y-1">
                             <h4 class="font-bold flex items-center gap-1.5"><i class="fas fa-info-circle"></i> Nota de Auditoría de Cómputo:</h4>
                             <p>
-                                <strong>Stock Físico Actual:</strong> <span class="font-mono font-bold" x-text="formatNumber(diagProducto.stock_actual) + ' ' + diagProducto.unidad"></span> 
-                                (ya descontado del inventario físico al registrarse las ventas de hoy).
+                                <strong>Carga Mañana (Stock Inicial Subido Hoy):</strong> <span class="font-mono font-bold" x-text="formatNumber(Number(diagProducto.stock_actual) - Number(diagProducto.deuda_arrastrada) + Number(diagProducto.vendido_hoy_futuro)) + ' ' + diagProducto.unidad"></span>.
                             </p>
                             <p>
-                                <strong>Fórmula de Balance:</strong> Saldo SIF (<span class="font-mono" x-text="formatNumber(diagProducto.saldo_sif)"></span>) = Stock Físico Actual (<span class="font-mono" x-text="formatNumber(diagProducto.stock_actual)"></span>) - Comprometido Futuro (<span class="font-mono" x-text="formatNumber(diagProducto.comprometido_futuro)"></span>) + Ventas Hoy con Despacho Futuro (<span class="font-mono" x-text="formatNumber(diagProducto.vendido_hoy_futuro)"></span>).
+                                <strong>Fórmula de Balance:</strong> Saldo SIF (<span class="font-mono" x-text="formatNumber(diagProducto.saldo_sif)"></span>) = Carga Mañana (<span class="font-mono" x-text="formatNumber(Number(diagProducto.stock_actual) - Number(diagProducto.deuda_arrastrada) + Number(diagProducto.vendido_hoy_futuro))"></span>) - Comprometido Futuro (<span class="font-mono" x-text="formatNumber(diagProducto.comprometido_futuro)"></span>).
                             </p>
                         </div>
 

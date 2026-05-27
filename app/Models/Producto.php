@@ -63,7 +63,7 @@ class Producto extends Model
                 0
             )"));
 
-        return (float)$this->stock - (float)$totalComprometido + (float)$vendidoHoyFuturo;
+        return ((float)$this->stock - (float)($this->deuda_arrastrada ?? 0.000)) - (float)$totalComprometido + (float)$vendidoHoyFuturo;
     }
 
     /**
