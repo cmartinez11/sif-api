@@ -51,8 +51,9 @@
                                     <option value="{{ $prod->id }}" 
                                             data-codigo="{{ $prod->codigo }}" 
                                             data-precio="{{ $prod->precio_base }}"
+                                            data-stock="{{ $prod->saldo_disponible_sif }}"
                                             data-unidad="{{ $prod->unidad_medida }}">
-                                        {{ $prod->nombre }}
+                                        {{ $prod->nombre }} (Disp: {{ number_format($prod->saldo_disponible_sif, 3, '.', '') }} {{ $prod->unidad_medida }})
                                     </option>
                                 @endforeach
                             </select>

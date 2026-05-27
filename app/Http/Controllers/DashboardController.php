@@ -57,9 +57,39 @@ class DashboardController extends Controller
             ));
         }
 
-        // Rango de fechas para consultas
-        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', Carbon::now()->endOfMonth()->toDateString());
+        // Rango de fechas para consultas y presets
+        $preset = $request->input('date_preset', '');
+        if (empty($preset)) {
+            if ($request->has('start_date') || $request->has('end_date')) {
+                $preset = 'personalizado';
+            } else {
+                $preset = 'este_mes'; // Default preset
+            }
+        }
+
+        switch ($preset) {
+            case 'hoy':
+                $startDate = Carbon::today()->toDateString();
+                $endDate = Carbon::today()->toDateString();
+                break;
+            case 'esta_semana':
+                $startDate = Carbon::now()->startOfWeek()->toDateString();
+                $endDate = Carbon::now()->endOfWeek()->toDateString();
+                break;
+            case 'este_mes':
+                $startDate = Carbon::now()->startOfMonth()->toDateString();
+                $endDate = Carbon::now()->endOfMonth()->toDateString();
+                break;
+            case 'anio_2026':
+                $startDate = '2026-01-01';
+                $endDate = '2026-12-31';
+                break;
+            case 'personalizado':
+            default:
+                $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
+                $endDate = $request->input('end_date', Carbon::now()->endOfMonth()->toDateString());
+                break;
+        }
 
         if ($user->hasAnyRole(['Supervisor', 'Administrador'])) {
             $vendedoras = User::role('Vendedor')->get();
@@ -124,9 +154,127 @@ class DashboardController extends Controller
                 ->take(3)
                 ->get();
 
+            // -------------------------------------------------------------
+            // ANALÍTICA COMERCIAL AVANZADA
+            // -------------------------------------------------------------
+            $items = \App\Models\PedidoItem::whereHas('pedido', function ($query) use ($startDate, $endDate) {
+                $query->whereIn('estado', ['Aprobado', 'Despachado', 'Entregado'])
+                      ->whereBetween('fecha_pedido', [$startDate, $endDate]);
+            })->with(['producto', 'pedido.cotizacion'])->get();
+
+            $salesByLine = [];
+            $salesBySubline = [];
+            $salesByProduct = [];
+
+            foreach ($items as $item) {
+                $producto = $item->producto;
+                $linea = $producto ? ($producto->linea ?: 'SIN LINEA') : 'SIN LINEA';
+                $sublinea = $producto ? ($producto->sublinea ?: 'SIN SUBLINEA') : 'SIN SUBLINEA';
+                
+                $precioFila = (float)$item->precio_total;
+                $pedido = $item->pedido;
+                $moneda = 'soles';
+                $tipoCambio = 1.0;
+                
+                if ($pedido) {
+                    $cot = $pedido->cotizacion;
+                    if ($cot) {
+                        $moneda = $cot->moneda ?? 'soles';
+                        $tipoCambio = (float)($cot->tipo_cambio ?? 1.0);
+                    }
+                }
+                
+                $montoSoles = 0.0;
+                $montoDolares = 0.0;
+                
+                if ($moneda === 'dolares') {
+                    $montoDolares = $precioFila;
+                    $montoSoles = $precioFila * $tipoCambio;
+                } else {
+                    $montoSoles = $precioFila;
+                    $montoDolares = $tipoCambio > 0 ? ($precioFila / $tipoCambio) : 0.0;
+                }
+                
+                // Group Line
+                if (!isset($salesByLine[$linea])) {
+                    $salesByLine[$linea] = [
+                        'linea' => $linea,
+                        'soles' => 0.0,
+                        'dolares' => 0.0
+                    ];
+                }
+                $salesByLine[$linea]['soles'] += $montoSoles;
+                $salesByLine[$linea]['dolares'] += $montoDolares;
+                
+                // Group Subline
+                if (!isset($salesBySubline[$linea])) {
+                    $salesBySubline[$linea] = [];
+                }
+                if (!isset($salesBySubline[$linea][$sublinea])) {
+                    $salesBySubline[$linea][$sublinea] = [
+                        'sublinea' => $sublinea,
+                        'soles' => 0.0,
+                        'dolares' => 0.0
+                    ];
+                }
+                $salesBySubline[$linea][$sublinea]['soles'] += $montoSoles;
+                $salesBySubline[$linea][$sublinea]['dolares'] += $montoDolares;
+                
+                // Group Product
+                $prodId = $item->producto_id;
+                if ($producto && $prodId) {
+                    if (!isset($salesByProduct[$prodId])) {
+                        $salesByProduct[$prodId] = [
+                            'producto_id' => $prodId,
+                            'codigo' => $producto->codigo ?? 'N/A',
+                            'nombre' => $producto->nombre ?? 'N/A',
+                            'unidad_medida' => $producto->unidad_medida ?? 'Und',
+                            'linea' => $linea,
+                            'sublinea' => $sublinea,
+                            'cantidad_vendida' => 0.0,
+                            'soles' => 0.0,
+                            'dolares' => 0.0
+                        ];
+                    }
+                    
+                    // Extract quantity
+                    $campos = is_string($item->campos_json) ? json_decode($item->campos_json, true) : ($item->campos_json ?: []);
+                    $cantidad = 0.0;
+                    if (isset($campos['total_kilos']) && $campos['total_kilos'] !== '') {
+                        $cantidad = (float) $campos['total_kilos'];
+                    } elseif (isset($campos['total_millares']) && $campos['total_millares'] !== '') {
+                        $cantidad = (float) $campos['total_millares'];
+                    } elseif (isset($campos['cantidad']) && $campos['cantidad'] !== '') {
+                        $cantidad = (float) $campos['cantidad'];
+                    } elseif (isset($campos['fardo']) && $campos['fardo'] !== '') {
+                        $cantidad = (float) $campos['fardo'];
+                    } elseif (isset($campos['cantidad_fardos']) && $campos['cantidad_fardos'] !== '') {
+                        $cantidad = (float) $campos['cantidad_fardos'];
+                    } elseif (isset($campos['cantidad_millar']) && $campos['cantidad_millar'] !== '') {
+                        $cantidad = (float) $campos['cantidad_millar'];
+                    }
+                    
+                    $salesByProduct[$prodId]['cantidad_vendida'] += $cantidad;
+                    $salesByProduct[$prodId]['soles'] += $montoSoles;
+                    $salesByProduct[$prodId]['dolares'] += $montoDolares;
+                }
+            }
+
+            $formattedSublines = [];
+            foreach ($salesBySubline as $lineKey => $sublines) {
+                $formattedSublines[$lineKey] = array_values($sublines);
+            }
+
+            $analiticaData = [
+                'lineas' => array_values($salesByLine),
+                'sublineas' => $formattedSublines,
+                'productos' => array_values($salesByProduct)
+            ];
+
             return view('dashboard.supervisor', compact(
                 'startDate',
                 'endDate',
+                'preset',
                 'rankingVendedoras',
                 'totalVentasPeriodoSoles',
                 'totalVentasPeriodoDolares',
@@ -135,7 +283,8 @@ class DashboardController extends Controller
                 'eficienciaConversion',
                 'pedidosPorProducir',
                 'alertasRuptura',
-                'vendedoras'
+                'vendedoras',
+                'analiticaData'
             ));
         }
 

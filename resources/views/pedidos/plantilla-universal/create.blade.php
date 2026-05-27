@@ -375,10 +375,12 @@
                     precio_total: '',
                     unidad: '',
                     unidad_medida: '',
+                    stock: 0,
                     estado_item: 'Activo',
                     motivo_rechazo: '',
                     precio_competencia: ''
                 }],
+                isAdminOrSupervisor: @hasanyrole('Administrador|Supervisor') true @else false @endhasanyrole,
                 modalRechazoOpen: false,
                 rechazoIndex: null,
                 rechazoItemData: { motivo_rechazo: '', precio_competencia: '' },
@@ -415,6 +417,7 @@
                         precio_unitario: '',
                         precio_total: '',
                         unidad: '',
+                        stock: 0,
                         estado_item: 'Activo',
                         motivo_rechazo: '',
                         precio_competencia: ''
@@ -435,6 +438,7 @@
                             this.items[index].codigo = '';
                             this.items[index].unidad_medida = '';
                             this.items[index].precio_unitario = 0;
+                            this.items[index].stock = 0;
                             const nombrePlantilla = "{{ $plantilla->nombre }}";
                             if (nombrePlantilla === 'Universal') this.items[index].unidad = '';
 
@@ -452,6 +456,7 @@
                         this.items[index].codigo = '';
                         this.items[index].nombre = '';
                         this.items[index].precio_unitario = 0;
+                        this.items[index].stock = 0;
                         if (nombrePlantilla === 'Universal') this.items[index].unidad = '';
                     } else {
                         this.items[index].producto_id = productoSeleccionadoId;
@@ -459,6 +464,7 @@
                         this.items[index].nombre = opt.text.trim();
                         this.items[index].precio_unitario = parseFloat(opt.getAttribute('data-precio') || 0);
                         this.items[index].unidad_medida = opt.getAttribute('data-unidad') || '-';
+                        this.items[index].stock = parseFloat(opt.getAttribute('data-stock') || 0);
 
                         if (nombrePlantilla === 'Universal') {
                             this.items[index].unidad = opt.getAttribute('data-unidad') || '';
@@ -536,6 +542,35 @@
                 submitForm() {
                     if (!this.cliente_id) return alert('Por favor, seleccione un cliente antes de continuar.');
                     if (this.items.some(i => !i.producto_id)) return alert('Hay filas sin producto seleccionado.');
+                    
+                    // Validación estricta de stock disponible SIF
+                    const nombrePlantilla = "{{ $plantilla->nombre }}";
+                    for (let idx = 0; idx < this.items.length; idx++) {
+                        const item = this.items[idx];
+                        if (item.estado_item === 'Rechazado') continue;
+
+                        let qty = 0;
+                        if (nombrePlantilla === 'Universal') {
+                            qty = parseFloat(item.cantidad) || 0;
+                        } else if (nombrePlantilla === 'Bolsas de Polipropileno' || nombrePlantilla === 'Bolsas de Polipropileno por kilos') {
+                            qty = parseFloat(item.total_kilos) || 0;
+                        } else {
+                            qty = parseFloat(item.total_millares) || 0;
+                        }
+
+                        const stock = parseFloat(item.stock) || 0;
+                        if (qty > stock) {
+                            if (this.isAdminOrSupervisor) {
+                                if (!confirm(`ATENCIÓN: El producto "${item.nombre}" supera el stock disponible SIF (${stock.toFixed(3)}). ¿Desea guardar el pedido de todas formas?`)) {
+                                    return;
+                                }
+                            } else {
+                                alert(`BLOQUEADO: El producto "${item.nombre}" supera el stock disponible SIF (${stock.toFixed(3)}). Por favor reduzca la cantidad.`);
+                                return;
+                            }
+                        }
+                    }
+
                     if (confirm('¿Desea guardar este pedido directo?')) document.getElementById('form-pedido').submit();
                 },
 

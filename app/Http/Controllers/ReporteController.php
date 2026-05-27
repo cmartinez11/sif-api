@@ -50,12 +50,10 @@ class ReporteController extends Controller
             ->groupBy('pedido_items.producto_id');
 
         // 1. CALCULAR EL STOCK COMPROMETIDO FUTURO (FechaDespacho >= Hoy + 2 días, Aprobado)
-        $fechaLimite = now()->addDays(2)->toDateString();
+        $fechaLimite = now()->addDays(1)->toDateString();
         $stockComprometidoSub = DB::table('pedido_items')
             ->join('pedidos', 'pedido_items.pedido_id', '=', 'pedidos.id')
-            ->where('pedidos.estado', 'Aprobado')
-            ->where('pedidos.estado', '!=', 'Despachado')
-            ->where('pedidos.estado', '!=', 'Entregado')
+            ->whereIn('pedidos.estado', ['Aprobado', 'Pendiente'])
             ->whereDate('pedidos.fecha_entrega_confirmada', '>=', $fechaLimite)
             ->select(
                 'pedido_items.producto_id',
@@ -149,12 +147,10 @@ class ReporteController extends Controller
             ->groupBy('pedido_items.producto_id');
 
         // Calcular el stock comprometido futuro
-        $fechaLimite = now()->addDays(2)->toDateString();
+        $fechaLimite = now()->addDays(1)->toDateString();
         $stockComprometidoSub = DB::table('pedido_items')
             ->join('pedidos', 'pedido_items.pedido_id', '=', 'pedidos.id')
-            ->where('pedidos.estado', 'Aprobado')
-            ->where('pedidos.estado', '!=', 'Despachado')
-            ->where('pedidos.estado', '!=', 'Entregado')
+            ->whereIn('pedidos.estado', ['Aprobado', 'Pendiente'])
             ->whereDate('pedidos.fecha_entrega_confirmada', '>=', $fechaLimite)
             ->select(
                 'pedido_items.producto_id',
@@ -296,14 +292,12 @@ class ReporteController extends Controller
         $stockPlanilla = (float)$producto->stock - (float)$producto->deuda_arrastrada + $vendidoHoy;
 
         // Comprometido futuro: Pedidos aprobados a 2 días a más
-        $fechaLimite = now()->addDays(2)->toDateString();
+        $fechaLimite = now()->addDays(1)->toDateString();
         $comprometidos = DB::table('pedido_items')
             ->join('pedidos', 'pedido_items.pedido_id', '=', 'pedidos.id')
             ->join('users', 'pedidos.user_id', '=', 'users.id')
             ->where('pedido_items.producto_id', $producto->id)
-            ->where('pedidos.estado', 'Aprobado')
-            ->where('pedidos.estado', '!=', 'Despachado')
-            ->where('pedidos.estado', '!=', 'Entregado')
+            ->whereIn('pedidos.estado', ['Aprobado', 'Pendiente'])
             ->whereDate('pedidos.fecha_entrega_confirmada', '>=', $fechaLimite)
             ->select(
                 'pedidos.numero as numero_pedido',

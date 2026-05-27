@@ -74,7 +74,7 @@
                                 'nombre' => $p->nombre,
                                 'linea' => $p->linea ?? 'N/A',
                                 'unidad_medida' => $p->unidad_medida ?? 'N/A',
-                                'stock' => (float)($p->stock ?? 0),
+                                'stock' => (float)($p->saldo_disponible_sif ?? 0),
                                 'estado' => (bool)$p->estado,
                                 'editUrl' => route('productos.edit', $p),
                                 'deleteUrl' => route('productos.destroy', $p)
@@ -236,7 +236,7 @@
                                         <th class="px-4 py-3 text-left text-xs uppercase tracking-wider min-w-[200px]">Producto</th>
                                         <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Línea</th>
                                         <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Unidad de medida</th>
-                                        <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Stock Disp.</th>
+                                        <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Disponible SIF</th>
                                         <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Estado</th>
                                         <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Acciones</th>
                                     </tr>
@@ -249,7 +249,10 @@
                                             <td class="px-4 py-4 text-sm text-gray-600" x-text="producto.nombre"></td>
                                             <td class="px-4 py-4 text-sm text-gray-600" x-text="producto.linea"></td>
                                             <td class="px-4 py-4 text-sm text-gray-600" x-text="producto.unidad_medida"></td>
-                                            <td class="px-4 py-4 text-sm text-gray-600 font-mono" x-text="producto.stock.toFixed(3)"></td>
+                                            <td class="px-4 py-4 text-sm text-gray-600 font-mono whitespace-nowrap">
+                                                <span class="inline-block px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] uppercase font-bold mr-1.5 align-middle">Disponible SIF</span>
+                                                <span x-text="producto.stock.toFixed(3)"></span>
+                                            </td>
                                             <td class="px-4 py-4 text-sm">
                                                 <span 
                                                     class="px-2 py-1 rounded-full text-xs font-bold" 

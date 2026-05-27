@@ -246,7 +246,7 @@
                                     <th class="px-6 py-3 text-center text-xs uppercase tracking-wider font-semibold">U/M</th>
                                     <th class="px-6 py-3 text-right text-xs uppercase tracking-wider font-semibold">Subido Hoy</th>
                                     <th class="px-6 py-3 text-right text-xs uppercase tracking-wider font-semibold">Vendido Hoy</th>
-                                    <th class="px-6 py-3 text-right text-xs uppercase tracking-wider font-semibold">Saldo SIF</th>
+                                    <th class="px-6 py-3 text-right text-xs uppercase tracking-wider font-semibold">Saldo</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">

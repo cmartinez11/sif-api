@@ -25,6 +25,7 @@
     'nombre'      => $item->producto->nombre ?? '',
     'precio_unitario' => $item->precio_unitario,
     'precio_total'    => $item->precio_total,
+    'stock'           => (float)($item->producto->saldo_disponible_sif ?? 0),
     'estado_item'     => $item->estado_item ?? 'Activo',
     'motivo_rechazo'  => $item->motivo_rechazo ?? '',
     'precio_competencia' => $item->precio_competencia ?? '',
@@ -342,6 +343,7 @@
                     provincia: @json($cotizacione->cliente->provincia)
                 },
                 items: initialItems || [],
+                isAdminOrSupervisor: @hasanyrole('Administrador|Supervisor') true @else false @endhasanyrole,
                 modalRechazoOpen: false,
                 rechazoIndex: null,
                 rechazoItemData: { motivo_rechazo: '', precio_competencia: '' },
@@ -381,6 +383,7 @@
                         precio_unitario: '',
                         precio_total: '',
                         unidad_medida: '',
+                        stock: 0,
                         estado_item: 'Activo',
                         motivo_rechazo: '',
                         precio_competencia: ''
@@ -409,10 +412,12 @@
                     if (opt.value === "") {
                         this.items[index].codigo = '';
                         this.items[index].precio_unitario = 0;
+                        this.items[index].stock = 0;
                     } else {
                         this.items[index].codigo = opt.getAttribute('data-codigo');
                         this.items[index].precio_unitario = parseFloat(opt.getAttribute('data-precio') || 0);
                         this.items[index].unidad_medida = opt.getAttribute('data-unidad') || '-';
+                        this.items[index].stock = parseFloat(opt.getAttribute('data-stock') || 0);
                     }
                     this.calculateRow(index);
                 },
@@ -500,6 +505,34 @@
                     // 1. VALIDACIÓN: Evita enviar si no hay cliente
                     if (!this.cliente_id) {
                         return alert('Por favor, seleccione un cliente antes de continuar.');
+                    }
+
+                    // Validación de stock disponible SIF
+                    const nombrePlantilla = "{{ $plantilla->nombre }}";
+                    for (let idx = 0; idx < this.items.length; idx++) {
+                        const item = this.items[idx];
+                        if (item.estado_item === 'Rechazado') continue;
+
+                        let qty = 0;
+                        if (nombrePlantilla === 'Universal') {
+                            qty = parseFloat(item.cantidad) || 0;
+                        } else if (nombrePlantilla === 'Bolsas de Polipropileno' || nombrePlantilla === 'Bolsas de Polipropileno por kilos') {
+                            qty = parseFloat(item.total_kilos) || 0;
+                        } else {
+                            qty = parseFloat(item.total_millares) || 0;
+                        }
+
+                        const stock = parseFloat(item.stock) || 0;
+                        if (qty > stock) {
+                            if (this.isAdminOrSupervisor) {
+                                if (!confirm(`ATENCIÓN: El producto "${item.nombre || item.codigo}" supera el stock disponible SIF (${stock.toFixed(3)}). ¿Desea actualizar la cotización de todas formas?`)) {
+                                    return;
+                                }
+                            } else {
+                                alert(`BLOQUEADO: El producto "${item.nombre || item.codigo}" supera el stock disponible SIF (${stock.toFixed(3)}). Por favor reduzca la cantidad.`);
+                                return;
+                            }
+                        }
                     }
 
                     // 2. SINCRONIZACIÓN CRÍTICA: 

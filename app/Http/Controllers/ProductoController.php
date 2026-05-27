@@ -269,12 +269,12 @@ class ProductoController extends Controller
      */
     public function monitoreoStock($id)
     {
-        $producto = DB::table('productos')->select('codigo', 'nombre', 'stock')->where('id', $id)->first();
+        $producto = Producto::find($id);
         if (!$producto) {
             return response()->json(['error' => 'Producto no encontrado.'], 404);
         }
 
-        $stock = number_format((float) $producto->stock, 3, '.', '');
+        $stock = number_format((float) $producto->saldo_disponible_sif, 3, '.', '');
 
         // Obtener ventas del día de hoy agrupadas por vendedora y pedido
         $ventasHoy = DB::table('pedido_items')
