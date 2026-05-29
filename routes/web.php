@@ -75,6 +75,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/reportes/diagnostico-stock/{codigo}', [App\Http\Controllers\ReporteController::class, 'diagnosticoStock'])
         ->middleware('role:Administrador|Supervisor|Logistico')
         ->name('reportes.diagnostico_stock');
+    Route::get('/reportes/cierre-diario/exportar-stock-inicial', [App\Http\Controllers\ReporteController::class, 'exportarStockInicial'])
+        ->middleware('role:Administrador|Supervisor')
+        ->name('reportes.cierre_diario.exportar_stock_inicial');
+    Route::get('/reportes/cierre-diario/exportar-stock-disponible', [App\Http\Controllers\ReporteController::class, 'exportarStockDisponible'])
+        ->middleware('role:Administrador|Supervisor')
+        ->name('reportes.cierre_diario.exportar_stock_disponible');
 
     Route::resource('users', App\Http\Controllers\UserController::class);
 

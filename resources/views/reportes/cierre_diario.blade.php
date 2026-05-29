@@ -28,8 +28,9 @@
                         'linea' => $p->linea ?? 'N/A',
                         'unidad' => $p->unidad_medida_logistica ?? 'N/A',
                         'subido' => $stockActual - $deudaArrastrada + $vendidoHoy, // Stock inicial cargado (Amortizado si hubo deuda)
-                        'stock' => $saldoSif,                // Saldo neto actual SIF
-                        'vendido' => $vendidoHoy                // Cantidad vendida hoy
+                        'vendido' => $vendidoHoy,                // Cantidad vendida hoy
+                        'comprometido' => $comprometido,          // Cantidad comprometida a futuro
+                        'stock' => $saldoSif                  // Saldo neto actual SIF
                     ];
                 })->toJson() !!},
 
@@ -182,6 +183,32 @@
                         Exportar PDF
                     </a>
 
+                    @hasanyrole('Administrador|Supervisor')
+                    <!-- Botón Descargar Stock Subido Hoy -->
+                    <a 
+                        href="{{ route('reportes.cierre_diario.exportar_stock_inicial') }}" 
+                        class="inline-flex items-center justify-center text-white text-xs md:text-sm font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 uppercase tracking-wider w-full sm:w-auto text-center border-none"
+                        style="background-color: #10b981; color: #ffffff; padding: 8px 16px; border-radius: 8px; border: none; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; text-decoration: none;"
+                        onmouseover="this.style.backgroundColor='#059669'"
+                        onmouseout="this.style.backgroundColor='#10b981'"
+                    >
+                        <i class="fas fa-file-excel mr-2 text-base"></i>
+                        Descargar Stock Subido Hoy
+                    </a>
+
+                    <!-- Botón Descargar Stock Actual Disponible -->
+                    <a 
+                        href="{{ route('reportes.cierre_diario.exportar_stock_disponible') }}" 
+                        class="inline-flex items-center justify-center text-white text-xs md:text-sm font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 uppercase tracking-wider w-full sm:w-auto text-center border-none"
+                        style="background-color: #111827; color: #ffffff; padding: 8px 16px; border-radius: 8px; border: none; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; text-decoration: none;"
+                        onmouseover="this.style.backgroundColor='#000000'"
+                        onmouseout="this.style.backgroundColor='#111827'"
+                    >
+                        <i class="fas fa-file-excel mr-2 text-base"></i>
+                        Descargar Stock Actual Disponible
+                    </a>
+                    @endhasanyrole
+
                     <a href="{{ route('pedidos.index') }}" class="inline-flex items-center justify-center text-xs md:text-sm font-semibold text-gray-600 hover:text-gray-900 transition w-full sm:w-auto text-center py-2 text-decoration-none" style="text-decoration: none;">
                         &larr; Volver a Pedidos
                     </a>
@@ -246,6 +273,7 @@
                                     <th class="px-6 py-3 text-center text-xs uppercase tracking-wider font-semibold">U/M</th>
                                     <th class="px-6 py-3 text-right text-xs uppercase tracking-wider font-semibold">Subido Hoy</th>
                                     <th class="px-6 py-3 text-right text-xs uppercase tracking-wider font-semibold">Vendido Hoy</th>
+                                    <th class="px-6 py-3 text-right text-xs uppercase tracking-wider font-semibold">Comprometido</th>
                                     <th class="px-6 py-3 text-right text-xs uppercase tracking-wider font-semibold">Saldo</th>
                                 </tr>
                             </thead>
@@ -307,6 +335,13 @@
                                             :class="item.stock <= 0 ? 'text-red-700 font-bold' : (item.vendido > 0 ? 'text-blue-600 font-bold' : 'text-gray-600')"
                                             x-text="formatNumber(item.vendido)"
                                         ></td>
+
+                                        <!-- Comprometido -->
+                                        <td 
+                                            class="px-6 py-4 text-sm text-right font-mono whitespace-nowrap"
+                                            :class="item.stock <= 0 ? 'text-red-700 font-bold' : (item.comprometido > 0 ? 'text-purple-600 font-bold' : 'text-gray-600')"
+                                            x-text="formatNumber(item.comprometido)"
+                                        ></td>
                                         
                                         <!-- Saldo SIF -->
                                         <td 
@@ -321,7 +356,7 @@
 
                                 <!-- Fila de Sin Resultados -->
                                 <tr x-show="filteredItems.length === 0">
-                                    <td colspan="7" class="px-6 py-10 text-center text-sm text-gray-500">
+                                    <td colspan="8" class="px-6 py-10 text-center text-sm text-gray-500">
                                         <div class="flex flex-col items-center justify-center gap-2">
                                             <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>

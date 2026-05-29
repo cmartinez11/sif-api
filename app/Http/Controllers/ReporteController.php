@@ -372,4 +372,140 @@ class ReporteController extends Controller
             })
         ]);
     }
+
+    /**
+     * Exporta el stock bruto inicial cargado en la mañana.
+     */
+    public function exportarStockInicial()
+    {
+        $hoy = date('Y-m-d');
+        $fechaLimite = now()->addDays(1)->toDateString();
+
+        $stockComprometidoSub = DB::table('pedido_items')
+            ->join('pedidos', 'pedido_items.pedido_id', '=', 'pedidos.id')
+            ->whereIn('pedidos.estado', ['Aprobado', 'Pendiente'])
+            ->whereDate('pedidos.fecha_entrega_confirmada', '>=', $fechaLimite)
+            ->select(
+                'pedido_items.producto_id',
+                DB::raw("SUM(COALESCE(
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'total_kilos', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'total_millares', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'cantidad', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'fardo', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'cantidad_fardos', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'cantidad_millar', '') AS NUMERIC),
+                    0
+                )) as total_comprometido")
+            )
+            ->groupBy('pedido_items.producto_id');
+
+        $ventasHoyFuturoSub = DB::table('pedido_items')
+            ->join('pedidos', 'pedido_items.pedido_id', '=', 'pedidos.id')
+            ->where('pedidos.fecha_pedido', $hoy)
+            ->whereNotIn('pedidos.estado', ['Rechazado', 'Anulado'])
+            ->whereDate('pedidos.fecha_entrega_confirmada', '>=', $fechaLimite)
+            ->select(
+                'pedido_items.producto_id',
+                DB::raw("SUM(COALESCE(
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'total_kilos', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'total_millares', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'cantidad', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'fardo', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'cantidad_fardos', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'cantidad_millar', '') AS NUMERIC),
+                    0
+                )) as total_vendido_futuro")
+            )
+            ->groupBy('pedido_items.producto_id');
+
+        $productosReporte = DB::table('productos')
+            ->leftJoinSub($stockComprometidoSub, 'comprometido', function ($join) {
+                $join->on('productos.id', '=', 'comprometido.producto_id');
+            })
+            ->leftJoinSub($ventasHoyFuturoSub, 'ventas_futuras', function ($join) {
+                $join->on('productos.id', '=', 'ventas_futuras.producto_id');
+            })
+            ->select(
+                'productos.codigo',
+                'productos.nombre',
+                'productos.linea',
+                'productos.unidad_medida_logistica',
+                'productos.stock',
+                'productos.deuda_arrastrada',
+                DB::raw('COALESCE(comprometido.total_comprometido, 0.000) as stock_comprometido'),
+                DB::raw('COALESCE(ventas_futuras.total_vendido_futuro, 0.000) as vendido_hoy_futuro')
+            )
+            ->orderBy('productos.codigo')
+            ->get();
+
+        return \Excel::download(new \App\Exports\StockInicialExport($productosReporte), "stock-inicial-{$hoy}.xlsx");
+    }
+
+    /**
+     * Exporta el stock disponible real aplicando la resta matemática limpia.
+     */
+    public function exportarStockDisponible()
+    {
+        $hoy = date('Y-m-d');
+        $fechaLimite = now()->addDays(1)->toDateString();
+
+        $stockComprometidoSub = DB::table('pedido_items')
+            ->join('pedidos', 'pedido_items.pedido_id', '=', 'pedidos.id')
+            ->whereIn('pedidos.estado', ['Aprobado', 'Pendiente'])
+            ->whereDate('pedidos.fecha_entrega_confirmada', '>=', $fechaLimite)
+            ->select(
+                'pedido_items.producto_id',
+                DB::raw("SUM(COALESCE(
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'total_kilos', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'total_millares', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'cantidad', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'fardo', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'cantidad_fardos', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'cantidad_millar', '') AS NUMERIC),
+                    0
+                )) as total_comprometido")
+            )
+            ->groupBy('pedido_items.producto_id');
+
+        $ventasHoyFuturoSub = DB::table('pedido_items')
+            ->join('pedidos', 'pedido_items.pedido_id', '=', 'pedidos.id')
+            ->where('pedidos.fecha_pedido', $hoy)
+            ->whereNotIn('pedidos.estado', ['Rechazado', 'Anulado'])
+            ->whereDate('pedidos.fecha_entrega_confirmada', '>=', $fechaLimite)
+            ->select(
+                'pedido_items.producto_id',
+                DB::raw("SUM(COALESCE(
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'total_kilos', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'total_millares', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'cantidad', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'fardo', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'cantidad_fardos', '') AS NUMERIC),
+                    CAST(NULLIF(pedido_items.campos_json::jsonb->>'cantidad_millar', '') AS NUMERIC),
+                    0
+                )) as total_vendido_futuro")
+            )
+            ->groupBy('pedido_items.producto_id');
+
+        $productosReporte = DB::table('productos')
+            ->leftJoinSub($stockComprometidoSub, 'comprometido', function ($join) {
+                $join->on('productos.id', '=', 'comprometido.producto_id');
+            })
+            ->leftJoinSub($ventasHoyFuturoSub, 'ventas_futuras', function ($join) {
+                $join->on('productos.id', '=', 'ventas_futuras.producto_id');
+            })
+            ->select(
+                'productos.codigo',
+                'productos.nombre',
+                'productos.linea',
+                'productos.unidad_medida_logistica',
+                'productos.stock',
+                'productos.deuda_arrastrada',
+                DB::raw('COALESCE(comprometido.total_comprometido, 0.000) as stock_comprometido'),
+                DB::raw('COALESCE(ventas_futuras.total_vendido_futuro, 0.000) as vendido_hoy_futuro')
+            )
+            ->orderBy('productos.codigo')
+            ->get();
+
+        return \Excel::download(new \App\Exports\StockDisponibleExport($productosReporte), "stock-disponible-{$hoy}.xlsx");
+    }
 }
