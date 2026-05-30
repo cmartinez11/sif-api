@@ -113,7 +113,6 @@
                 <th>PRODUCTO</th>
                 <th width="12%" style="text-align: center;">CANTIDAD</th>
                 <th width="12%" style="text-align: center;">U/M</th>
-                <th width="18%" style="background-color: #e6fffa; color: #0f5132; text-align: center; font-size: 10px;">CANTIDAD A DESPACHAR (FARDOS)</th>
                 <th width="15%" style="text-align: center;">TOTAL</th>
             </tr>
         </thead>
@@ -165,7 +164,7 @@
                     $cantidadPorMillar = (float)($campos['cantidad_millar'] ?? 0);
                     $totalDerivado = $cantidadFinal * $cantidadPorMillar; 
 
-                    $umLogistica = $item->producto->unidad_medida_logistica ?? 'Millares';
+                    $umLogistica = $item->producto->unidad_medida_logistica ?: 'FARDO';
                 @endphp
                 <tr>
                     <td>{{ $item->producto->codigo }}</td>
@@ -176,12 +175,9 @@
                         @endif
                     </td>
                     <td style="text-align: center; font-weight: bold; background-color: #f9f9f9;">
-                        {{ number_format((float)$cantidadFinal, 2) }}
+                        {{ number_format((float)$item->cantidad_fardos_picking, 2) }}
                     </td>
                     <td style="text-align: center;">{{ $umLogistica }}</td>
-                    <td style="text-align: center; font-weight: bold; background-color: #e6fffa; color: #0f5132; border: 1px solid #badbcc;">
-                        {{ number_format($item->cantidad_fardos_picking, 2) }} {{ $item->producto->unidad_medida_logistica ?: 'FARDOS' }}
-                    </td>
                     <td style="text-align: center; font-weight: bold;">
                         {{ number_format((float)$totalDerivado, 2) }}
                     </td>
