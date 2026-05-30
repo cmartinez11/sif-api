@@ -236,7 +236,7 @@
                                         <th class="px-4 py-3 text-left text-xs uppercase tracking-wider min-w-[200px]">Producto</th>
                                         <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Línea</th>
                                         <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Unidad de medida</th>
-                                        <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Disponible SIF</th>
+                                        <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Disponible</th>
                                         <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Estado</th>
                                         <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Acciones</th>
                                     </tr>
@@ -249,8 +249,7 @@
                                             <td class="px-4 py-4 text-sm text-gray-600" x-text="producto.nombre"></td>
                                             <td class="px-4 py-4 text-sm text-gray-600" x-text="producto.linea"></td>
                                             <td class="px-4 py-4 text-sm text-gray-600" x-text="producto.unidad_medida"></td>
-                                            <td class="px-4 py-4 text-sm text-gray-600 font-mono whitespace-nowrap">
-                                                <span class="inline-block px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] uppercase font-bold mr-1.5 align-middle">Disponible SIF</span>
+                                            <td class="px-4 py-4 text-sm text-gray-600 font-mono whitespace-nowrap justify-center">
                                                 <span x-text="producto.stock.toFixed(3)"></span>
                                             </td>
                                             <td class="px-4 py-4 text-sm">
