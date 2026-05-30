@@ -48,10 +48,14 @@ class ProductoController extends Controller
             'estado' => 'required|boolean',
             'peso' => 'nullable|numeric|min:0',
             'unidad_medida_logistica' => 'nullable|string|max:255',
+            'unidades_por_fardo' => 'nullable|numeric|min:0.01',
         ]);
 
         // Evitar el error 500 de Postgres permitiendo un valor inicial decimal limpio
         $validated['stock'] = 0.000; 
+
+        // Si llega vacío o nulo, le asignamos 1.00 antes de guardar
+        $validated['unidades_por_fardo'] = (isset($validated['unidades_por_fardo']) && $validated['unidades_por_fardo'] !== '' && $validated['unidades_por_fardo'] !== null) ? $validated['unidades_por_fardo'] : 1.00;
 
         Producto::create($validated);
         return redirect()->route('productos.index')->with('success', 'Producto creado exitosamente.');
@@ -84,6 +88,7 @@ class ProductoController extends Controller
             'estado' => 'required|boolean',
             'peso' => 'nullable|numeric|min:0',
             'unidad_medida_logistica' => 'nullable|string|max:255',
+            'unidades_por_fardo' => 'nullable|numeric|min:0.01',
         ];
 
         $isAuthorized = auth()->user() && auth()->user()->hasAnyRole(['Supervisor', 'Administrador']);
@@ -93,6 +98,9 @@ class ProductoController extends Controller
         }
 
         $validated = $request->validate($rules);
+
+        // Si llega vacío o nulo, le asignamos 1.00
+        $validated['unidades_por_fardo'] = (isset($validated['unidades_por_fardo']) && $validated['unidades_por_fardo'] !== '' && $validated['unidades_por_fardo'] !== null) ? $validated['unidades_por_fardo'] : 1.00;
 
         $oldStock = (float)$producto->stock;
         $newStock = $isAuthorized && $request->has('stock')

@@ -61,6 +61,14 @@
                             @error('unidad_medida_logistica') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
 
+                        <!-- Equivalencia: Unidades por Fardo -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Equivalencia: Unidades por Fardo</label>
+                            <input type="number" step="0.01" min="0.01" name="unidades_por_fardo" id="unidades_por_fardo" value="{{ old('unidades_por_fardo', '1.00') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-fenix-green focus:ring focus:ring-fenix-green focus:ring-opacity-50">
+                            <span class="text-gray-500 text-[10px] block mt-1">Ejemplo: Si un fardo contiene 0.5 millares, ingresa 0.50. Si el producto no requiere conversión logística, déjalo en 1.00.</span>
+                            @error('unidades_por_fardo') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        </div>
+
                         <!-- Precio Base -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Precio Base</label>

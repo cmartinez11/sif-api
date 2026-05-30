@@ -18,6 +18,7 @@ class Producto extends Model
         'precio_base' => 'decimal:2',
         'peso' => 'decimal:3',
         'estado' => 'boolean',
+        'unidades_por_fardo' => 'decimal:2',
     ];
 
     protected $appends = ['saldo_disponible_sif'];

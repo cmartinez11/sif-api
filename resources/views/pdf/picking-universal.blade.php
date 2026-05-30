@@ -110,8 +110,9 @@
             <tr>
                 <th width="15%">CÓDIGO</th>
                 <th>PRODUCTO</th>
-                <th width="15%" style="text-align: center;">CANTIDAD</th>
-                <th width="15%" style="text-align: center;">U/M</th>
+                <th width="12%" style="text-align: center;">CANTIDAD</th>
+                <th width="12%" style="text-align: center;">U/M</th>
+                <th width="20%" style="background-color: #e6fffa; color: #0f5132; text-align: center; font-size: 10px;">CANTIDAD A DESPACHAR (FARDOS)</th>
             </tr>
         </thead>
         <tbody>
@@ -175,6 +176,9 @@
                         {{ number_format((float)$cantidadFinal, 2) }}
                     </td>
                     <td style="text-align: center;">{{ $umLogistica }}</td>
+                    <td style="text-align: center; font-weight: bold; background-color: #e6fffa; color: #0f5132; border: 1px solid #badbcc;">
+                        {{ number_format($item->cantidad_fardos_picking, 2) }} {{ $item->producto->unidad_medida_logistica ?: 'FARDOS' }}
+                    </td>
                 </tr>
             @endforeach
         </tbody>
