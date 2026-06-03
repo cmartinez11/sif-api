@@ -249,7 +249,7 @@
                                             <td class="px-4 py-4 text-sm text-gray-600" x-text="producto.nombre"></td>
                                             <td class="px-4 py-4 text-sm text-gray-600" x-text="producto.linea"></td>
                                             <td class="px-4 py-4 text-sm text-gray-600" x-text="producto.unidad_medida"></td>
-                                            <td class="px-4 py-4 text-sm text-gray-600 font-mono whitespace-nowrap justify-center">
+                                            <td class="px-4 py-4 text-sm text-gray-600 font-mono whitespace-nowrap text-center">
                                                 <span x-text="producto.stock.toFixed(3)"></span>
                                             </td>
                                             <td class="px-4 py-4 text-sm">
