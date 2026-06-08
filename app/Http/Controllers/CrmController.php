@@ -51,23 +51,47 @@ class CrmController extends Controller
      */
     public function storeCompetencia(Request $request)
     {
-        // Validaciones para la competencia
-        $validated = $request->validate([
-            'cliente_id'       => 'required|integer|exists:clientes,id',
-            'producto_id'      => 'required|integer|exists:productos,id',
-            'proveedor_nombre' => 'required|string|max:255',
-            'precio_ofrecido'  => 'required|numeric',
-            'unidad_volumen'   => 'nullable|string|max:255',
-            'fecha_dato'       => 'required|date',
-        ]);
+        try {
+            // Validaciones para la competencia
+            $validated = $request->validate([
+                'cliente_id'        => 'required|integer|exists:clientes,id',
+                'producto_id'       => 'required|integer|exists:productos,id',
+                'proveedor_nombre'  => 'required|string|max:255',
+                'precio_ofrecido'   => 'nullable|numeric',
+                'unidad_volumen'    => 'nullable|string|max:255',
+                'fecha_dato'        => 'nullable|date',
+                'motivo_perdida'    => 'nullable|string|max:255',
+                'entrega_proveedor' => 'nullable|string|max:255',
+                'entrega_nuestra'   => 'nullable|string|max:255',
+                'detalle_perdida'   => 'nullable|string',
+            ]);
 
-        $competencia = Competencia::create($validated);
+            // Fallback para campos no nulos en base de datos
+            if (!isset($validated['precio_ofrecido']) || $validated['precio_ofrecido'] === '') {
+                $validated['precio_ofrecido'] = 0;
+            }
 
-        // Retorna respuesta JSON de éxito
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Dato registrado'
-        ]);
+            if (empty($validated['fecha_dato'])) {
+                $validated['fecha_dato'] = date('Y-m-d');
+            }
+
+            $competencia = Competencia::create($validated);
+
+            // Retorna respuesta JSON de éxito
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Dato registrado',
+                'data' => $competencia
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'error' => 'Error de validación: ' . implode(', ', \Illuminate\Support\Arr::flatten($e->errors()))
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

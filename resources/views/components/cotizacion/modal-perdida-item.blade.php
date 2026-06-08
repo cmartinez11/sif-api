@@ -34,7 +34,7 @@
             <!-- Nombre de Competencia -->
             <div>
                 <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nombre de Competencia (¿Quién ganó?):</label>
-                <input type="text" x-model="perdidaData.proveedor_nombre" 
+                <input type="text" id="proveedor_nombre" x-model="perdidaData.proveedor_nombre" 
                        class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 text-sm"
                        placeholder="Nombre de la empresa o proveedor">
             </div>
@@ -42,7 +42,7 @@
             <!-- Motivo de Selección -->
             <div>
                 <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Motivo de Selección del Cliente:</label>
-                <select x-model="perdidaData.motivo_perdida" 
+                <select id="motivo_perdida" x-model="perdidaData.motivo_perdida" 
                         class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 text-sm">
                     <option value="">-- Seleccionar Motivo --</option>
                     <option value="Precio">Precio</option>
@@ -59,7 +59,7 @@
                 <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Precio de Competencia:</label>
                 <div class="relative">
                     <span class="absolute left-3 top-2 text-gray-400">$</span>
-                    <input type="number" step="0.0001" x-model="perdidaData.precio_ofrecido" 
+                    <input type="number" id="precio_ofrecido" step="0.0001" x-model="perdidaData.precio_ofrecido" 
                            class="w-full pl-7 border-gray-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 text-sm"
                            placeholder="0.0000">
                 </div>
@@ -72,13 +72,13 @@
                  class="bg-gray-50 p-3 rounded-lg border border-gray-200 grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-[10px] font-bold text-gray-700 uppercase mb-1">Entrega Proveedor:</label>
-                    <input type="text" x-model="perdidaData.entrega_proveedor" 
+                    <input type="text" id="entrega_proveedor" x-model="perdidaData.entrega_proveedor" 
                            class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 text-sm"
                            placeholder="Ej: 3 días">
                 </div>
                 <div>
                     <label class="block text-[10px] font-bold text-gray-700 uppercase mb-1">Nuestra Entrega:</label>
-                    <input type="text" x-model="perdidaData.entrega_nuestra" 
+                    <input type="text" id="nuestra_entrega" x-model="perdidaData.entrega_nuestra" 
                            class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 text-sm"
                            placeholder="Ej: 7 días">
                 </div>
@@ -90,7 +90,7 @@
                  x-transition:enter-start="opacity-0 transform -translate-y-2"
                  class="bg-gray-50 p-3 rounded-lg border border-gray-200">
                 <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Explicación Detallada:</label>
-                <textarea x-model="perdidaData.detalle_perdida" rows="3" 
+                <textarea id="detalle_perdida" x-model="perdidaData.detalle_perdida" rows="3" 
                           class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 text-sm"
                           placeholder="Describa el motivo..."></textarea>
             </div>

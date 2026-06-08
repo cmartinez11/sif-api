@@ -94,6 +94,7 @@ class CotizacionController extends Controller
         $cotizacion->save();
 
         $items = json_decode($request->itemsJson, true);
+        $hasInsufficientStock = false;
         foreach($items as $i) {
             if(!empty($i['producto_id'])) {
                 $cotizacionItem = new CotizacionItem();
@@ -106,7 +107,31 @@ class CotizacionController extends Controller
                 $cotizacionItem->motivo_rechazo = $i['motivo_rechazo'] ?? null;
                 $cotizacionItem->precio_competencia = !empty($i['precio_competencia']) ? $i['precio_competencia'] : null;
                 $cotizacionItem->save();
+
+                if (($i['estado_item'] ?? 'Activo') === 'Activo') {
+                    $producto = Producto::find($i['producto_id']);
+                    if ($producto) {
+                        $nombrePlantilla = $cotizacion->plantilla ? $cotizacion->plantilla->nombre : '';
+                        $qty = 0;
+                        if ($nombrePlantilla === 'Universal') {
+                            $qty = (float)($i['cantidad'] ?? 0);
+                        } elseif ($nombrePlantilla === 'Bolsas de Polipropileno' || $nombrePlantilla === 'Bolsas de Polipropileno por kilos') {
+                            $qty = (float)($i['total_kilos'] ?? 0);
+                        } else {
+                            $qty = (float)($i['total_millares'] ?? 0);
+                        }
+
+                        if ($qty > (float)$producto->saldo_disponible_sif) {
+                            $hasInsufficientStock = true;
+                        }
+                    }
+                }
             }
+        }
+
+        if ($hasInsufficientStock) {
+            return redirect()->route('cotizaciones.index')
+                ->with('warning', 'Cotización registrada exitosamente. Nota: Algunos productos presentan stock insuficiente y se ha generado una alerta de producción.');
         }
 
         return redirect()->route('cotizaciones.index')->with('success', 'Cotización generada exitosamente.');
@@ -176,6 +201,7 @@ class CotizacionController extends Controller
         // El inventario (productos.stock) NO se toca aquí.
         $cotizacione->items()->delete();
         $items = json_decode($request->itemsJson, true);
+        $hasInsufficientStock = false;
 
         foreach ($items as $i) {
             if (empty($i['producto_id'])) {
@@ -194,6 +220,25 @@ class CotizacionController extends Controller
                 ? $i['precio_competencia']
                 : null;
             $cotizacionItem->save();
+
+            if (($i['estado_item'] ?? 'Activo') === 'Activo') {
+                $producto = Producto::find($i['producto_id']);
+                if ($producto) {
+                    $nombrePlantilla = $cotizacione->plantilla ? $cotizacione->plantilla->nombre : '';
+                    $qty = 0;
+                    if ($nombrePlantilla === 'Universal') {
+                        $qty = (float)($i['cantidad'] ?? 0);
+                    } elseif ($nombrePlantilla === 'Bolsas de Polipropileno' || $nombrePlantilla === 'Bolsas de Polipropileno por kilos') {
+                        $qty = (float)($i['total_kilos'] ?? 0);
+                    } else {
+                        $qty = (float)($i['total_millares'] ?? 0);
+                    }
+
+                    if ($qty > (float)$producto->saldo_disponible_sif) {
+                        $hasInsufficientStock = true;
+                    }
+                }
+            }
 
             // Registrar competencia si el ítem fue rechazado
             $pData = $i['perdida_data'] ?? null;
@@ -219,6 +264,11 @@ class CotizacionController extends Controller
                     ]
                 );
             }
+        }
+
+        if ($hasInsufficientStock) {
+            return redirect()->route('cotizaciones.index')
+                ->with('warning', 'Cotización registrada exitosamente. Nota: Algunos productos presentan stock insuficiente y se ha generado una alerta de producción.');
         }
 
         return redirect()->route('cotizaciones.index')

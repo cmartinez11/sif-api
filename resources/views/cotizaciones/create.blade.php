@@ -781,35 +781,6 @@
                 submitForm() {
                     if (!this.cliente_id) return alert('Por favor, seleccione un cliente antes de continuar.');
                     if (this.items.some(i => !i.producto_id)) return alert('Hay filas sin producto seleccionado.');
-                    
-                    // Validación de stock disponible SIF
-                    const nombrePlantilla = "{{ $plantilla->nombre }}";
-                    for (let idx = 0; idx < this.items.length; idx++) {
-                        const item = this.items[idx];
-                        if (item.estado_item === 'Rechazado') continue;
-
-                        let qty = 0;
-                        if (nombrePlantilla === 'Universal') {
-                            qty = parseFloat(item.cantidad) || 0;
-                        } else if (nombrePlantilla === 'Bolsas de Polipropileno' || nombrePlantilla === 'Bolsas de Polipropileno por kilos') {
-                            qty = parseFloat(item.total_kilos) || 0;
-                        } else {
-                            qty = parseFloat(item.total_millares) || 0;
-                        }
-
-                        const stock = parseFloat(item.stock) || 0;
-                        if (qty > stock) {
-                            // Para cotizaciones, dado que son preventivas, alertamos y pedimos confirmación
-                            if (this.isAdminOrSupervisor) {
-                                if (!confirm(`ATENCIÓN: El producto "${item.nombre}" supera el stock disponible SIF (${stock.toFixed(3)}). ¿Desea guardar la cotización de todas formas?`)) {
-                                    return;
-                                }
-                            } else {
-                                alert(`BLOQUEADO: El producto "${item.nombre}" supera el stock disponible SIF (${stock.toFixed(3)}). Por favor reduzca la cantidad.`);
-                                return;
-                            }
-                        }
-                    }
 
                     if (confirm('¿Desea guardar esta cotización?')) document.getElementById('form-cotizacion').submit();
                 },
@@ -861,17 +832,80 @@
                     this.perdidaIndex = null;
                 },
                 confirmarPerdida() {
-                    if (!this.perdidaData.proveedor_nombre || !this.perdidaData.motivo_perdida) {
+                    if (!this.cliente_id) {
+                        alert('Debe seleccionar un cliente antes de registrar la pérdida.');
+                        return;
+                    }
+
+                    const compInput = document.getElementById('proveedor_nombre');
+                    const motivoSelect = document.getElementById('motivo_perdida');
+                    const precioInput = document.getElementById('precio_ofrecido');
+                    const entregaProvInput = document.getElementById('entrega_proveedor');
+                    const entregaNuestraInput = document.getElementById('nuestra_entrega');
+                    const detalleTextarea = document.getElementById('detalle_perdida');
+
+                    const proveedor_nombre = compInput ? compInput.value.trim() : '';
+                    const motivo_perdida = motivoSelect ? motivoSelect.value : '';
+                    const precio_ofrecido = precioInput ? precioInput.value : '';
+                    const entrega_proveedor = entregaProvInput ? entregaProvInput.value.trim() : '';
+                    const entrega_nuestra = entregaNuestraInput ? entregaNuestraInput.value.trim() : '';
+                    const detalle_perdida = detalleTextarea ? detalleTextarea.value.trim() : '';
+
+                    if (!proveedor_nombre || !motivo_perdida) {
                         alert('Nombre de competencia y motivo son obligatorios.');
                         return;
                     }
+
                     if (this.perdidaIndex !== null) {
-                        // Marcamos como rechazado para que no sume y guardamos los datos extra
                         let item = this.items[this.perdidaIndex];
                         item.estado_item = 'Rechazado';
                         item.oculto = true;
-                        item.motivo_rechazo = this.perdidaData.proveedor_nombre; // Reusamos para el controlador
-                        item.perdida_data = JSON.parse(JSON.stringify(this.perdidaData)); // Guardamos todo el objeto
+                        item.motivo_rechazo = proveedor_nombre;
+                        
+                        item.perdida_data = {
+                            proveedor_nombre: proveedor_nombre,
+                            motivo_perdida: motivo_perdida,
+                            precio_ofrecido: precio_ofrecido,
+                            entrega_proveedor: entrega_proveedor,
+                            entrega_nuestra: entrega_nuestra,
+                            detalle_perdida: detalle_perdida
+                        };
+
+                        const datos = {
+                            cliente_id: this.cliente_id,
+                            producto_id: item.producto_id,
+                            proveedor_nombre: proveedor_nombre,
+                            motivo_perdida: motivo_perdida,
+                            precio_ofrecido: precio_ofrecido || null,
+                            entrega_proveedor: entrega_proveedor || null,
+                            entrega_nuestra: entrega_nuestra || null,
+                            detalle_perdida: detalle_perdida || null,
+                            fecha_dato: new Date().toISOString().slice(0, 10)
+                        };
+
+                        console.log('Enviando datos al backend para crm_competencia:', datos);
+
+                        fetch('/crm/competencia/guardar', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                            },
+                            body: JSON.stringify(datos)
+                        })
+                        .then(res => {
+                            if (!res.ok) {
+                                return res.json().then(err => { throw new Error(err.error || 'Error en el servidor') });
+                            }
+                            return res.json();
+                        })
+                        .then(data => {
+                            console.log('Competencia guardada exitosamente en crm_competencia:', data);
+                        })
+                        .catch(err => {
+                            console.error('Error al registrar competencia:', err);
+                            alert('Error al registrar en la base de datos: ' + err.message);
+                        });
                     }
                     this.cerrarModalPerdida();
                 },

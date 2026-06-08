@@ -21,6 +21,11 @@
                             {{ session('success') }}
                         </div>
                     @endif
+                    @if (session('warning'))
+                        <div class="bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500 px-4 py-3 rounded relative mb-4" role="alert">
+                            {{ session('warning') }}
+                        </div>
+                    @endif
                     @if (session('error'))
                         <div class="bg-red-100 text-red-700 px-4 py-3 rounded relative mb-4">
                             {{ session('error') }}

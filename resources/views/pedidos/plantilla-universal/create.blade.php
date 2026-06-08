@@ -619,16 +619,80 @@
                     this.perdidaIndex = null;
                 },
                 confirmarPerdida() {
-                    if (!this.perdidaData.proveedor_nombre || !this.perdidaData.motivo_perdida) {
+                    if (!this.cliente_id) {
+                        alert('Debe seleccionar un cliente antes de registrar la pérdida.');
+                        return;
+                    }
+
+                    const compInput = document.getElementById('proveedor_nombre');
+                    const motivoSelect = document.getElementById('motivo_perdida');
+                    const precioInput = document.getElementById('precio_ofrecido');
+                    const entregaProvInput = document.getElementById('entrega_proveedor');
+                    const entregaNuestraInput = document.getElementById('nuestra_entrega');
+                    const detalleTextarea = document.getElementById('detalle_perdida');
+
+                    const proveedor_nombre = compInput ? compInput.value.trim() : '';
+                    const motivo_perdida = motivoSelect ? motivoSelect.value : '';
+                    const precio_ofrecido = precioInput ? precioInput.value : '';
+                    const entrega_proveedor = entregaProvInput ? entregaProvInput.value.trim() : '';
+                    const entrega_nuestra = entregaNuestraInput ? entregaNuestraInput.value.trim() : '';
+                    const detalle_perdida = detalleTextarea ? detalleTextarea.value.trim() : '';
+
+                    if (!proveedor_nombre || !motivo_perdida) {
                         alert('Nombre de competencia y motivo son obligatorios.');
                         return;
                     }
+
                     if (this.perdidaIndex !== null) {
                         let item = this.items[this.perdidaIndex];
                         item.estado_item = 'Rechazado';
                         item.oculto = true;
-                        item.motivo_rechazo = this.perdidaData.proveedor_nombre;
-                        item.perdida_data = JSON.parse(JSON.stringify(this.perdidaData));
+                        item.motivo_rechazo = proveedor_nombre;
+                        
+                        item.perdida_data = {
+                            proveedor_nombre: proveedor_nombre,
+                            motivo_perdida: motivo_perdida,
+                            precio_ofrecido: precio_ofrecido,
+                            entrega_proveedor: entrega_proveedor,
+                            entrega_nuestra: entrega_nuestra,
+                            detalle_perdida: detalle_perdida
+                        };
+
+                        const datos = {
+                            cliente_id: this.cliente_id,
+                            producto_id: item.producto_id,
+                            proveedor_nombre: proveedor_nombre,
+                            motivo_perdida: motivo_perdida,
+                            precio_ofrecido: precio_ofrecido || null,
+                            entrega_proveedor: entrega_proveedor || null,
+                            entrega_nuestra: entrega_nuestra || null,
+                            detalle_perdida: detalle_perdida || null,
+                            fecha_dato: new Date().toISOString().slice(0, 10)
+                        };
+
+                        console.log('Enviando datos al backend para crm_competencia:', datos);
+
+                        fetch('/crm/competencia/guardar', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                            },
+                            body: JSON.stringify(datos)
+                        })
+                        .then(res => {
+                            if (!res.ok) {
+                                return res.json().then(err => { throw new Error(err.error || 'Error en el servidor') });
+                            }
+                            return res.json();
+                        })
+                        .then(data => {
+                            console.log('Competencia guardada exitosamente en crm_competencia:', data);
+                        })
+                        .catch(err => {
+                            console.error('Error al registrar competencia:', err);
+                            alert('Error al registrar en la base de datos: ' + err.message);
+                        });
                     }
                     this.cerrarModalPerdida();
                 },

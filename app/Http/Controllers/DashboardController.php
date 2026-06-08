@@ -46,11 +46,48 @@ class DashboardController extends Controller
                 ->whereNotIn('estado', ['Anulado', 'Cancelado por el cliente'])
                 ->count();
 
-            // Alertas de ruptura (saldos negativos en stock en el SIF)
-            $alertasRuptura = \App\Models\Producto::where('stock', '<', 0)
-                ->orderBy('stock', 'asc') // Mayor deuda primero (más negativo)
-                ->take(3)
-                ->get();
+            // Alertas de ruptura (saldos negativos en stock en el SIF, incluyendo cotizaciones)
+            $idsFromStock = \App\Models\Producto::where('stock', '<', 0)->pluck('id')->toArray();
+            $idsFromCotizaciones = \App\Models\CotizacionItem::whereHas('cotizacion', function($q) {
+                $q->where('estado', 'Borrador');
+            })->where('estado_item', 'Activo')->pluck('producto_id')->toArray();
+            $idsFromPedidos = \App\Models\PedidoItem::whereHas('pedido', function($q) {
+                $q->whereIn('estado', ['Aprobado', 'Pendiente']);
+            })->pluck('producto_id')->toArray();
+
+            $candidateIds = array_unique(array_merge($idsFromStock, $idsFromCotizaciones, $idsFromPedidos));
+            $candidateProducts = \App\Models\Producto::whereIn('id', $candidateIds)->get();
+
+            $alertasRupturaList = [];
+            foreach ($candidateProducts as $pr) {
+                $saldoSif = (float)$pr->saldo_disponible_sif;
+                $totalCotizado = \Illuminate\Support\Facades\DB::table('cotizacion_items')
+                    ->join('cotizaciones', 'cotizacion_items.cotizacion_id', '=', 'cotizaciones.id')
+                    ->where('cotizacion_items.producto_id', $pr->id)
+                    ->where('cotizaciones.estado', 'Borrador')
+                    ->where('cotizacion_items.estado_item', 'Activo')
+                    ->sum(\Illuminate\Support\Facades\DB::raw("COALESCE(
+                        CAST(NULLIF(cotizacion_items.campos_json::jsonb->>'total_kilos', '') AS NUMERIC),
+                        CAST(NULLIF(cotizacion_items.campos_json::jsonb->>'total_millares', '') AS NUMERIC),
+                        CAST(NULLIF(cotizacion_items.campos_json::jsonb->>'cantidad', '') AS NUMERIC),
+                        CAST(NULLIF(cotizacion_items.campos_json::jsonb->>'fardo', '') AS NUMERIC),
+                        CAST(NULLIF(cotizacion_items.campos_json::jsonb->>'cantidad_fardos', '') AS NUMERIC),
+                        CAST(NULLIF(cotizacion_items.campos_json::jsonb->>'cantidad_millar', '') AS NUMERIC),
+                        0
+                    )"));
+
+                $balance = $saldoSif - (float)$totalCotizado;
+                if ($balance < 0) {
+                    $pr->stock_deficit = $balance;
+                    $alertasRupturaList[] = $pr;
+                }
+            }
+
+            usort($alertasRupturaList, function($a, $b) {
+                return $a->stock_deficit <=> $b->stock_deficit;
+            });
+
+            $alertasRuptura = collect(array_slice($alertasRupturaList, 0, 3));
 
             return view('dashboard.logistica', compact(
                 'despachosHoy', 'pendientesPicking', 'backordersEspera', 'entregadosSemana', 'agendaDespachos', 'pedidosPorProducir', 'alertasRuptura'
@@ -148,11 +185,48 @@ class DashboardController extends Controller
                 ->whereNotIn('estado', ['Anulado', 'Cancelado por el cliente'])
                 ->count();
 
-            // Alertas de ruptura (saldos negativos en stock en el SIF)
-            $alertasRuptura = \App\Models\Producto::where('stock', '<', 0)
-                ->orderBy('stock', 'asc') // Mayor deuda primero (más negativo)
-                ->take(3)
-                ->get();
+            // Alertas de ruptura (saldos negativos en stock en el SIF, incluyendo cotizaciones)
+            $idsFromStock = \App\Models\Producto::where('stock', '<', 0)->pluck('id')->toArray();
+            $idsFromCotizaciones = \App\Models\CotizacionItem::whereHas('cotizacion', function($q) {
+                $q->where('estado', 'Borrador');
+            })->where('estado_item', 'Activo')->pluck('producto_id')->toArray();
+            $idsFromPedidos = \App\Models\PedidoItem::whereHas('pedido', function($q) {
+                $q->whereIn('estado', ['Aprobado', 'Pendiente']);
+            })->pluck('producto_id')->toArray();
+
+            $candidateIds = array_unique(array_merge($idsFromStock, $idsFromCotizaciones, $idsFromPedidos));
+            $candidateProducts = \App\Models\Producto::whereIn('id', $candidateIds)->get();
+
+            $alertasRupturaList = [];
+            foreach ($candidateProducts as $pr) {
+                $saldoSif = (float)$pr->saldo_disponible_sif;
+                $totalCotizado = \Illuminate\Support\Facades\DB::table('cotizacion_items')
+                    ->join('cotizaciones', 'cotizacion_items.cotizacion_id', '=', 'cotizaciones.id')
+                    ->where('cotizacion_items.producto_id', $pr->id)
+                    ->where('cotizaciones.estado', 'Borrador')
+                    ->where('cotizacion_items.estado_item', 'Activo')
+                    ->sum(\Illuminate\Support\Facades\DB::raw("COALESCE(
+                        CAST(NULLIF(cotizacion_items.campos_json::jsonb->>'total_kilos', '') AS NUMERIC),
+                        CAST(NULLIF(cotizacion_items.campos_json::jsonb->>'total_millares', '') AS NUMERIC),
+                        CAST(NULLIF(cotizacion_items.campos_json::jsonb->>'cantidad', '') AS NUMERIC),
+                        CAST(NULLIF(cotizacion_items.campos_json::jsonb->>'fardo', '') AS NUMERIC),
+                        CAST(NULLIF(cotizacion_items.campos_json::jsonb->>'cantidad_fardos', '') AS NUMERIC),
+                        CAST(NULLIF(cotizacion_items.campos_json::jsonb->>'cantidad_millar', '') AS NUMERIC),
+                        0
+                    )"));
+
+                $balance = $saldoSif - (float)$totalCotizado;
+                if ($balance < 0) {
+                    $pr->stock_deficit = $balance;
+                    $alertasRupturaList[] = $pr;
+                }
+            }
+
+            usort($alertasRupturaList, function($a, $b) {
+                return $a->stock_deficit <=> $b->stock_deficit;
+            });
+
+            $alertasRuptura = collect(array_slice($alertasRupturaList, 0, 3));
 
             // -------------------------------------------------------------
             // ANALÍTICA COMERCIAL AVANZADA

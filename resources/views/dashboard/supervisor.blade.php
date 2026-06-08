@@ -266,7 +266,7 @@
                                 @foreach($alertasRuptura as $ruptura)
                                     <div class="flex justify-between items-center text-xs">
                                         <span class="font-semibold text-slate-600 truncate max-w-[100px]">{{ $ruptura->codigo }}</span>
-                                        <span class="font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">{{ number_format($ruptura->stock, 2) }}</span>
+                                        <span class="font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">{{ number_format($ruptura->stock_deficit ?? $ruptura->stock, 2) }}</span>
                                     </div>
                                 @endforeach
                             </div>
