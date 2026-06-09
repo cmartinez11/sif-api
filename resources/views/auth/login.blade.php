@@ -40,11 +40,19 @@
             <form method="POST" action="{{ route('login') }}">
                 @csrf
 
-                <!-- Email Address -->
+                <!-- Usuario -->
                 <div>
-                    <x-label for="email" :value="__('Correo Electrónico')" />
+                    <x-label for="usuario" :value="__('Usuario')" />
 
-                    <x-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus />
+                    <x-input id="usuario" class="block mt-1 w-full @error('usuario') border-red-500 @enderror" 
+                             type="text" 
+                             name="usuario" 
+                             :value="old('usuario')" 
+                             required 
+                             autofocus />
+                    @error('usuario')
+                        <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span>
+                    @enderror
                 </div>
 
                 <!-- Password -->

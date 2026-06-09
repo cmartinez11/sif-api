@@ -19,6 +19,7 @@
                     <thead class="bg-fenix-green">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Nombre</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Usuario</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Email</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Rol</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">ACCIONES</th>
@@ -28,6 +29,7 @@
                         @foreach ($users as $u)
                             <tr>
                                 <td class="px-6 py-4 text-sm font-bold text-gray-900">{{ $u->name }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-750 font-mono">{{ $u->usuario ?? 'N/A' }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-600">{{ $u->email }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-600 font-bold uppercase">{{ $u->roles->pluck('name')->join(', ') }}</td>
                                 <td class="px-6 py-4 text-sm text-center">

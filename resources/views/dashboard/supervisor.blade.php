@@ -8,6 +8,45 @@
     <div class="py-8 bg-slate-50 min-h-screen">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
+            <!-- Alertas de Carga Masiva (Éxito y Fallos) -->
+            @if(session('success'))
+                <div class="mb-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-800 shadow-sm">
+                    <div class="flex items-start gap-3">
+                        <span class="text-xl">✅</span>
+                        <div>
+                            <p class="font-bold text-base">Carga Completada</p>
+                            <p class="text-sm mt-1">{!! session('success') !!}</p>
+                            @if(session('failures') && count(session('failures')))
+                                <div class="mt-3 rounded-xl bg-white/70 p-3 text-xs text-slate-700 border border-emerald-100">
+                                    <p class="font-semibold text-rose-600 mb-1">⚠️ Registros no procesados debido a errores:</p>
+                                    <ul class="list-disc list-inside space-y-1 text-slate-600">
+                                        @foreach(session('failures') as $failure)
+                                            <li>{{ $failure }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            @if($errors->any())
+                <div class="mb-8 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-rose-900 shadow-sm">
+                    <div class="flex items-start gap-3">
+                        <span class="text-xl">❌</span>
+                        <div>
+                            <p class="font-bold text-base">Error en la Carga Masiva</p>
+                            <ul class="mt-2 list-disc list-inside text-sm space-y-1">
+                                @foreach($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             @hasrole('Supervisor|Administrador')
             <!-- Carga de Chart.js para los Gráficos de Analítica -->
             <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -407,6 +446,74 @@
                     </div>
                 </div>
             </div>
+
+            @if(auth()->user()->hasRole('Administrador'))
+                <!-- SECCIÓN: CARGAS MASIVAS (Solo Administradores) -->
+                <div class="mt-8 bg-white rounded-2xl shadow-sm border border-slate-150 p-6 lg:p-8">
+                    <div class="border-b border-slate-100 pb-4 mb-6">
+                        <h3 class="text-xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
+                            <span>📥</span> Carga Masiva de Datos
+                        </h3>
+                        <p class="text-xs text-slate-450 mt-1">Carga archivos Excel (.xlsx, .xls) o CSV con los formatos correspondientes para importar masivamente Clientes o Contactos.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <!-- Carga de Clientes -->
+                        <div class="p-6 rounded-2xl border border-slate-100 bg-slate-50 flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between mb-4">
+                                    <h4 class="font-bold text-slate-700 text-base">Clientes</h4>
+                                    <a href="{{ route('importacion.template', 'clientes') }}" 
+                                       class="text-xs font-bold text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg transition">
+                                        📄 Descargar Plantilla
+                                    </a>
+                                </div>
+                                <p class="text-xs text-slate-450 mb-4">
+                                    Campos requeridos: <strong class="text-slate-600 font-mono">ruc, razon_social, condicion_pago</strong>.
+                                </p>
+                            </div>
+                            <form action="{{ route('importacion.clientes') }}" method="POST" enctype="multipart/form-data" class="space-y-3">
+                                @csrf
+                                <div>
+                                    <input type="file" name="file" accept=".xlsx,.xls,.csv" required
+                                           class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer">
+                                </div>
+                                <button type="submit" 
+                                        class="w-full inline-flex items-center justify-center rounded-xl bg-fenix-green px-4 py-2.5 text-xs font-bold text-white shadow hover:bg-green-700 transition">
+                                    ⚡ Importar Clientes
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Carga de Contactos -->
+                        <div class="p-6 rounded-2xl border border-slate-100 bg-slate-50 flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between mb-4">
+                                    <h4 class="font-bold text-slate-700 text-base">Contactos</h4>
+                                    <a href="{{ route('importacion.template', 'contactos') }}" 
+                                       class="text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition">
+                                        📄 Descargar Plantilla
+                                    </a>
+                                </div>
+                                <p class="text-xs text-slate-450 mb-4">
+                                    Campos requeridos: <strong class="text-slate-600 font-mono">nombre_completo</strong>.
+                                </p>
+                            </div>
+                            <form action="{{ route('importacion.contactos') }}" method="POST" enctype="multipart/form-data" class="space-y-3">
+                                @csrf
+                                <div>
+                                    <input type="file" name="file" accept=".xlsx,.xls,.csv" required
+                                           class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                                </div>
+                                <button type="submit" 
+                                        class="w-full inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow hover:bg-blue-700 transition">
+                                    ⚡ Importar Contactos
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             <!-- Scripts de Alpine.js para Dashboard -->
             <script>

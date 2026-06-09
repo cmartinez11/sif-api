@@ -26,8 +26,9 @@ class UserController extends Controller
     {
         if (!auth()->user()->hasRole('Administrador')) abort(403);
         $request->validate([
-            'name' => 'required',
+            'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
+            'usuario' => 'required|string|max:255|unique:users',
             'password' => 'required|min:6',
             'role' => 'required',
             'celular' => 'nullable|string|max:20',
@@ -36,6 +37,7 @@ class UserController extends Controller
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'usuario' => $request->usuario,
             'password' => bcrypt($request->password),
             'celular' => $request->celular,
         ]);
@@ -56,11 +58,13 @@ class UserController extends Controller
         
         $request->validate([
             'name' => 'required|string|max:255',
+            'usuario' => 'required|string|max:255|unique:users,usuario,' . $user->id,
             'password' => 'nullable|string|min:8',
             'celular' => 'nullable|string|max:20',
         ]);
 
         $user->name = $request->name;
+        $user->usuario = $request->usuario;
         $user->celular = $request->celular;
 
         if ($request->filled('password')) {

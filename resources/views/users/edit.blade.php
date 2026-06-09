@@ -17,13 +17,24 @@
                     @csrf
                     @method('PUT')
                     
-                    <!-- Nombre -->
+                    <!-- Nombre Completo -->
                     <div class="mb-6">
-                        <label class="block text-gray-700 font-bold mb-2">Nombre de Usuario</label>
+                        <label class="block text-gray-700 font-bold mb-2">Nombre Completo</label>
                         <input type="text" name="name" value="{{ old('name', $user->name) }}" 
                                class="w-full rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm shadow-sm focus:border-fenix-green focus:outline-none focus:ring-2 focus:ring-fenix-green/20 transition" 
                                required>
                         @error('name')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <!-- Nombre de Usuario (Login) -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-bold mb-2">Nombre de Usuario (Login)</label>
+                        <input type="text" name="usuario" value="{{ old('usuario', $user->usuario) }}" 
+                               class="w-full rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm shadow-sm focus:border-fenix-green focus:outline-none focus:ring-2 focus:ring-fenix-green/20 transition" 
+                               required>
+                        @error('usuario')
                             <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                         @enderror
                     </div>

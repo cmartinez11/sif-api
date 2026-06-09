@@ -12,11 +12,24 @@
                     @csrf
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700">Nombre</label>
-                        <input type="text" name="name" required class="mt-1 block w-full rounded-md border-gray-300">
+                        <input type="text" name="name" value="{{ old('name') }}" required class="mt-1 block w-full rounded-md border-gray-300">
+                        @error('name')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Nombre de Usuario (Login)</label>
+                        <input type="text" name="usuario" value="{{ old('usuario') }}" required class="mt-1 block w-full rounded-md border-gray-300">
+                        @error('usuario')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700">Email</label>
-                        <input type="email" name="email" required class="mt-1 block w-full rounded-md border-gray-300">
+                        <input type="email" name="email" value="{{ old('email') }}" required class="mt-1 block w-full rounded-md border-gray-300">
+                        @error('email')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700">Celular</label>
